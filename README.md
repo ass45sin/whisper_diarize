@@ -18,20 +18,89 @@ The tool can optionally perform speech transcription using WhisperX (recommended
 
 ## Setup
 
-1.  **Clone the repository (if applicable).**
-2.  **Install dependencies:**
+This section guides you through setting up the project on your local machine.
+
+### 0. Prerequisites: Python Installation
+
+Ensure you have Python 3.8 or newer installed.
+
+*   **General Recommendation:** Download the official Python installer from [python.org](https://www.python.org/downloads/).
+
+*   **macOS:**
+    *   Using Homebrew (recommended):
+        ```bash
+        brew install python
+        ```
+    *   Alternatively, use the installer from [python.org](https://www.python.org/downloads/macos/).
+
+*   **Linux (Ubuntu/Debian based):**
+    ```bash
+    sudo apt update
+    sudo apt install python3 python3-pip python3-venv
+    ```
+    For other distributions, please refer to their respective package managers and documentation.
+
+*   **Windows:**
+    *   Download and run the installer from [python.org](https://www.python.org/downloads/windows/). **Important:** Check the box "Add Python to PATH" during installation.
+    *   Alternatively, Python can be installed via the Microsoft Store or using winget:
+        ```bash
+        winget install Python.Python.3
+        ```
+
+Verify your installation by opening a terminal or command prompt and typing:
+```bash
+python3 --version  # or python --version on Windows if python3 isn't aliased
+pip3 --version     # or pip --version
+```
+
+### 1. Project Setup
+
+1.  **Clone the repository (if you haven't already):**
+    ```bash
+    git clone https://github.com/ass45sin/whisper_diarize.git
+    cd whisper_diarize
+    ```
+
+2.  **Create and Activate a Virtual Environment:**
+    It's highly recommended to use a virtual environment to manage project dependencies and avoid conflicts with other Python projects or your global Python installation.
+
+    *   **Create the virtual environment** (e.g., named `venv`):
+        ```bash
+        python3 -m venv venv
+        ```
+        (On Windows, you might use `python` instead of `python3` if `python3` is not recognized: `python -m venv venv`)
+
+    *   **Activate the virtual environment:**
+        *   On macOS and Linux:
+            ```bash
+            source venv/bin/activate
+            ```
+        *   On Windows (Command Prompt):
+            ```bash
+            venv\\Scripts\\activate.bat
+            ```
+        *   On Windows (PowerShell):
+            ```bash
+            .\\venv\\Scripts\\Activate.ps1
+            ```
+            (If you get an error about script execution policy in PowerShell, you might need to run: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` and then try activating again.)
+
+    Your terminal prompt should change to indicate that the virtual environment is active (e.g., `(venv) your-prompt$`).
+
+3.  **Install dependencies:**
+    With your virtual environment active, install the required packages:
     ```bash
     pip install -r requirements.txt
     ```
-3.  **Install FFmpeg:** This is required for audio processing. Instructions vary by OS.
+4.  **Install FFmpeg:** This is required for audio processing. Instructions vary by OS.
     - On macOS (using Homebrew): `brew install ffmpeg`
     - On Ubuntu/Debian: `sudo apt update && sudo apt install ffmpeg`
-4.  **Hugging Face Login:**
+5.  **Hugging Face Login:**
     ```bash
     huggingface-cli login
     ```
     You'll need a Hugging Face account and a User Access Token (read permission is sufficient). Create one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
-5.  **Accept Model Licenses:**
+6.  **Accept Model Licenses:**
     You must accept the user agreements for the models on the Hugging Face website:
     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
