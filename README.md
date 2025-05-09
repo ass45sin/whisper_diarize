@@ -1,4 +1,4 @@
-# Speaker Diarization CLI Tool
+# Speaker Diarization Tool
 
 This project provides a command-line interface and Gradio web UI for speaker diarization using `pyannote.audio` (version 3.1).
 It leverages Hugging Face for model access and authentication, requiring users to log in via `huggingface-cli login`.
