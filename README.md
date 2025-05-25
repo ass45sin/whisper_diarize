@@ -92,22 +92,32 @@ pip3 --version     # or pip --version
     ```bash
     pip install -r requirements.txt
     ```
-4.  **Install FFmpeg:** This is required for audio processing. Instructions vary by OS.
-    - On macOS (using Homebrew): `brew install ffmpeg`
-    - On Ubuntu/Debian: `sudo apt update && sudo apt install ffmpeg`
-5.  **Hugging Face Login:**
-    ```bash
-    huggingface-cli login
-    ```
-    You'll need a Hugging Face account and a User Access Token (read permission is sufficient). Create one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
-6.  **Accept Model Licenses:**
-    You must accept the user agreements for the models on the Hugging Face website:
-    - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
-    - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+    This will install `huggingface_hub` which provides the `huggingface-cli` tool.
+
+4.  **Install FFmpeg:** This is an essential external dependency for audio processing.
+    *   **macOS (using Homebrew):**
+        ```bash
+        brew install ffmpeg
+        ```
+    *   **Linux (Ubuntu/Debian):**
+        ```bash
+        sudo apt update && sudo apt install ffmpeg
+        ```
+    *   **Windows:** Download FFmpeg builds from [ffmpeg.org](https://ffmpeg.org/download.html#build-windows) or [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases). After downloading, you'll need to add the `bin` directory (containing `ffmpeg.exe`) to your system's PATH environment variable.
+
+5.  **Hugging Face Login & Model License Agreements:**
+    *   **Login to Hugging Face:**
+        ```bash
+        huggingface-cli login
+        ```
+        You'll be prompted to enter a Hugging Face User Access Token. Create one with "read" permissions at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+    *   **Accept Model Licenses:** You *must* accept the user agreements for the models on the Hugging Face website using the *same account* you logged in with:
+        *   [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (Click "Access repository")
+        *   [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (Click "Access repository")
 
 ## Usage
 
-Run the script from your terminal:
+Run the script from your terminal (ensure your virtual environment is activated):
 
 ```bash
 python diarize_huggingface_cli.py
@@ -115,190 +125,130 @@ python diarize_huggingface_cli.py
 
 This will launch a Gradio web interface in your browser.
 
-Refer to the "Help & Documentation" section within the Gradio UI for more detailed instructions on using the interface, supported formats, and troubleshooting.
+Refer to the "Help & Documentation" section within the Gradio UI or the sections below for more detailed instructions on using the interface, supported formats, and troubleshooting.
 
-## 📚 Gradio UI Documentation
+## 📚 Gradio UI Documentation (Mirrored from UI)
 
 This section mirrors the help documentation available directly within the Gradio user interface.
 
-### 🚀 Getting Started Guide
+*(The content from the "Help & Documentation" accordion in the Gradio UI is extensive and largely self-contained. For brevity in this README, users are encouraged to refer to the UI itself or the specific sections below for key information like "Common Issues & Solutions" and "System Requirements" which have been updated with consolidated information.)*
 
-1.  **Login to Hugging Face**:
+## ⚠️ Common Issues & Solutions
+
+This section provides solutions to common problems you might encounter.
+
+### Authentication & Model Access Issues
+
+*   **Error**: `"❌ Not logged in to Hugging Face CLI"` or `"AUTHORIZATION ERROR:"` or `"401 Unauthorized"`
+    *   **Solution**:
+        1.  Ensure you have run `huggingface-cli login` and entered a valid Hugging Face User Access Token with "read" permissions.
+        2.  Crucially, verify you have accepted the license agreements for **both** required models using the *same Hugging Face account* used for `huggingface-cli login`:
+            *   [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (Click "Access repository")
+            *   [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (Click "Access repository")
+        3.  If issues persist, try logging in again: `huggingface-cli login`.
+
+### Model Loading & Network Issues
+
+*   **Error**: `"SSL ERROR: There might be a network or proxy issue"`
+    *   **Solution**: This often indicates a problem with SSL certificate verification, possibly due to a corporate proxy or outdated certificates. Try:
+        ```bash
+        pip install --upgrade certifi
+        ```
+*   **Error**: `"ONNX RUNTIME ERROR: This is a known issue with the model"`
+    *   **Solution**: This can be due to incompatibilities with the ONNX model version. Try reinstalling a specific version of `onnxruntime`:
+        ```bash
+        pip uninstall onnxruntime onnxruntime-gpu
+        pip install onnxruntime==1.15.1
+        ```
+        (You might need to experiment with other `onnxruntime` versions if 1.15.1 doesn't resolve it, depending on model updates.)
+*   **Error**: `"MODEL NOT FOUND ERROR: The model file couldn't be downloaded"` or errors containing `"could not download"`
+    *   **Solution**:
+        1.  Check your internet connection.
+        2.  Ensure you have accepted all necessary model licenses on Hugging Face (see "Authentication & Model Access Issues").
+        3.  Try clearing the Hugging Face cache and then re-login:
+            *   macOS/Linux: `rm -rf ~/.cache/huggingface`
+            *   Windows: `del /s /q %USERPROFILE%\.cache\huggingface`
+            Then run `huggingface-cli login` again.
+
+### Audio Processing Issues
+
+*   **Error**: `"❌ FFmpeg is not installed or not in PATH."` or `"Error converting audio file"`
+    *   **Solution**: FFmpeg is essential for converting audio files to the format required by the diarization pipeline.
+        *   Ensure FFmpeg is installed on your system. See "Install FFmpeg" in the Setup section.
+        *   Verify that the directory containing `ffmpeg` (or `ffmpeg.exe` on Windows) is included in your system's PATH environment variable.
+        *   If the audio file is corrupted, try a different file.
+
+### Transcription Issues
+
+*   **Error**: `"⚠️ No transcription system is installed."` or `"❌ Failed to load transcription model."`
+    *   **Solution**: For transcription, you need either WhisperX (recommended) or standard OpenAI Whisper installed.
+        *   **WhisperX (Recommended):**
+            ```bash
+            pip install git+https://github.com/m-bain/whisperx.git
+            ```
+        *   **Standard Whisper:**
+            ```bash
+            pip install openai-whisper
+            ```
+    *   If a Whisper model fails to load (e.g., "Error loading WhisperX model"):
+        *   Check you have enough RAM/VRAM for the selected model size (see "Model Sizes" in the UI's Transcription help tab). Try a smaller model (e.g., "base" or "small").
+        *   Ensure the installation of Whisper/WhisperX and its dependencies completed without errors.
+
+### General Troubleshooting
+
+*   **Check Console Output**: The script prints detailed status messages, warnings, and errors to the console (terminal). This output is invaluable for diagnosing issues.
+*   **Restart Environment**: If you've made changes or installed new packages, try restarting your Python environment (deactivate and reactivate your virtual environment) or even your machine.
+*   **Upgrade Packages**: Consider upgrading key packages if you suspect a version incompatibility:
+    ```bash
+    pip install --upgrade pyannote.audio huggingface_hub torch torchaudio gradio
     ```
-    huggingface-cli login
-    ```
-    Enter your token when prompted (create one at https://huggingface.co/settings/tokens)
-2.  **Accept Model Licenses**:
-    *   Visit [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
-    *   Visit [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
-    *   Click "Access repository" on both pages
-3.  **Upload Audio**:
-    *   Choose an audio file in any common format
-    *   Adjust settings as needed
-    *   Click "Run Diarization"
-4.  **View Results**:
-    *   See speaker segmentation with timestamps
-    *   Results are saved to the specified output folder
 
-### 📋 Supported Audio Formats
+## 📦 System Requirements
 
-This tool supports all common audio formats through FFmpeg conversion:
-
-| Format | Description                                         |
-| :----- | :-------------------------------------------------- |
-| WAV    | Waveform Audio File (best quality/compatibility)    |
-| MP3    | MPEG Audio Layer III (common compressed format)     |
-| M4A    | MPEG-4 Audio (Apple format, commonly from recordings) |
-| FLAC   | Free Lossless Audio Codec (high quality compressed) |
-| OGG    | Ogg Vorbis (free, open compressed format)           |
-| AAC    | Advanced Audio Coding (common compressed format)    |
-
-Any other format supported by FFmpeg should also work. Files are automatically
-converted to 16kHz mono WAV format for processing.
-
-### 🔧 Key Features
-
-#### Basic Features
-
-*   **Speaker Diarization**: Identify who spoke when
-*   **Multiple File Formats**: Process WAV, MP3, M4A, FLAC and more
-*   **Speaker Statistics**: See speaking time and percentages for each speaker
-
-#### Advanced Features
-
-*   **Batch Processing**: Process multiple audio files at once
-*   **Audio Trimming**: Process only a specific part of an audio file
-*   **Transcription**: Convert speech to text using OpenAI Whisper
-*   **Structured Output**: Export results as JSON for further processing
-*   **GPU Acceleration**: Automatically uses GPU if available
-*   **Progress Tracking**: See real-time progress for long processing tasks
-
-### 🎯 Speech Transcription
-
-**Current Status** (this will reflect your local environment when you run the script):
-*   WhisperX: Available ✅ (Recommended) / Not Available ❌
-*   Whisper: Available ✅ (Fallback) / Not Available ❌
-
-#### Installation
-
-If transcription is not available, install WhisperX (recommended):
-```
-pip install git+https://github.com/m-bain/whisperx.git
-```
-
-Or standard Whisper:
-```
-pip install openai-whisper
-```
-
-#### WhisperX Advantages
-
-*   Better integration with speaker diarization
-*   More accurate word-level timestamps
-*   Voice activity detection (VAD) for better noise handling
-*   Faster processing than standard Whisper
-
-#### Model Sizes
-
-| Size     | Memory | Accuracy | Speed   | Use Case        |
-| :------- | :----- | :------- | :------ | :-------------- |
-| tiny     | ~1GB   | Low      | Fast    | Quick testing   |
-| base     | ~1GB   | Basic    | Fast    | General use     |
-| small    | ~2GB   | Good     | Medium  | Better accuracy |
-| medium   | ~5GB   | High     | Slow    | High accuracy   |
-| large-v3 | ~10GB  | Highest  | Slowest | Best results    |
-
-Specifying a language can improve transcription accuracy significantly.
-
-### 📊 Structured JSON Output
-
-When enabling "Export results as JSON", you get a structured file with:
-
-```json
-{
-  "file_info": {
-    "filename": "recording.mp3",
-    "path": "/path/to/recording.mp3",
-    "trimmed": false
-  },
-  "segments": [
-    {
-      "start": 0.5,
-      "end": 10.2,
-      "duration": 9.7,
-      "speaker": "SPEAKER_01",
-      "text": "This is the transcribed text if available"
-    }
-    // ...
-  ],
-  "speakers": {
-    "SPEAKER_01": {
-      "talk_time": 120.5,
-      "percentage": 45.3,
-      "segments": [0, 2, 5] // indices of segments spoken by this speaker
-    }
-    // ...
-  }
-}
-```
-
-This format is ideal for:
-
-*   Further data analysis
-*   Integration with other tools
-*   Building custom visualizations
-*   Training machine learning models
-
-### ⚠️ Common Issues & Solutions
-
-#### Authentication Issues
-
-*   **Error**: "Not logged in to Hugging Face CLI"
-    **Solution**: Run `huggingface-cli login` and enter your token
-*   **Error**: "401 Unauthorized"
-    **Solution**: Make sure you've accepted the model licenses on the Hugging Face website
-
-#### Audio Conversion Problems
-
-*   **Error**: "Failed to convert audio file"
-    **Solution**: Install FFmpeg or check if your audio file is corrupted
-
-#### Model Loading Failures
-
-*   **Error**: "ONNX Runtime Error"
-    **Solution**: Try `pip uninstall onnxruntime onnxruntime-gpu` then `pip install onnxruntime==1.15.1`
-*   **Error**: "SSL Error"
-    **Solution**: Run `pip install --upgrade certifi`
-
-#### Transcription Problems
-
-*   **Error**: "Failed to load Whisper model"
-    **Solution**: Check if you have enough memory for the selected model size, try a smaller model
-
-For further help, check the console output for detailed error messages.
-
-### 📦 System Requirements
-
-#### Essential Dependencies
+### Essential Software & Libraries
 
 *   **Python**: 3.8 or newer
-*   **PyTorch**: 1.12.0 or newer
-*   **FFmpeg**: For audio conversion
-*   **pyannote.audio**: For diarization
-*   **Hugging Face CLI**: For authentication
+*   **FFmpeg**: Required for audio processing and conversion. Must be installed and accessible in your system's PATH.
+*   **Python Libraries** (installed via `pip install -r requirements.txt`):
+    *   `gradio`: For the web user interface.
+    *   `pyannote.audio` (typically version 3.1 or as specified in `requirements.txt`): Core library for speaker diarization.
+    *   `torch` (PyTorch, >= 1.12.0 recommended): Deep learning framework used by `pyannote.audio`.
+    *   `torchaudio`: Audio library for PyTorch.
+    *   `pandas`: For data manipulation.
+    *   `huggingface_hub`: Provides `huggingface-cli` for authentication and model downloads, and is used by `pyannote.audio`.
 
-#### Optional Dependencies
+### Optional Dependencies (for Transcription)
 
-*   **OpenAI Whisper / WhisperX**: For speech transcription
-*   **CUDA**: For GPU acceleration (significantly speeds up processing)
+*   **WhisperX (Recommended):**
+    *   Installation: `pip install git+https://github.com/m-bain/whisperx.git`
+    *   Provides faster and often more accurate transcription with better word-level timestamps.
+*   **OpenAI Whisper (Fallback):**
+    *   Installation: `pip install openai-whisper`
+    *   Standard Whisper implementation.
 
-#### Hardware Recommendations
+### Hardware Recommendations
 
-*   **CPU**: Modern multi-core processor
-*   **RAM**: 8GB minimum, 16GB+ recommended
-*   **GPU**: NVIDIA GPU with 4GB+ VRAM (for faster processing)
-*   **Disk Space**: At least 10GB free space for models and temporary files
+*   **CPU**: A modern multi-core processor is recommended.
+*   **RAM**:
+    *   Minimum: 8GB (especially if not using large transcription models).
+    *   Recommended: 16GB or more, particularly when using larger Whisper models for transcription.
+*   **GPU (Optional but Highly Recommended for Speed)**:
+    *   An NVIDIA GPU with CUDA support (4GB+ VRAM) will significantly speed up both diarization and transcription. The script automatically uses the GPU if PyTorch detects a compatible CUDA environment.
+*   **Disk Space**:
+    *   At least 10-15GB of free space is recommended for storing downloaded models (which can be several gigabytes each, especially transcription models) and temporary files.
 
-#### Internet Connection
+### Internet Connection
 
-Required for initial model download and authentication. 
+*   **Required**: An active internet connection is necessary for:
+    *   Initial download of Python packages.
+    *   Downloading models from Hugging Face upon first use.
+    *   Hugging Face authentication (`huggingface-cli login`).
+*   **Not Required for Normal Operation**: Once models are downloaded and cached, the script can run offline for processing, provided no new models need to be fetched.
+
+## Contributing
+
+Contributions are welcome! Please fork the repository, create a new branch for your features or bug fixes, and submit a pull request.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
