@@ -3,11 +3,5 @@ pyannote.audio
 torch
 torchaudio
 pandas
-# Optional for transcription:
-# whisperx @ git+https://github.com/m-bain/whisperx.git
-# openai-whisper
-# For Hugging Face model access (CLI tool, not a direct library import in the script for pip install):
-# huggingface_hub # (underlying library for CLI and pyannote)
-
-# Note: huggingface-cli is a command-line tool that should be installed separately if not already present.
-# Typically installed via: pip install huggingface_hub 
+# For Hugging Face model access (CLI tool, used by pyannote.audio and for login):
+huggingface_hub # Provides huggingface-cli and used by pyannote.audio
