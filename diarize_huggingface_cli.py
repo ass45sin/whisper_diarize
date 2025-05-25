@@ -642,6 +642,70 @@ def _save_all_outputs(output_path_dir, original_audio_filepath, transcript_conte
 
     return text_file_path, "".join(messages)
 
+# --- Helper Functions for `diarize` ---
+
+def _diarize_initial_checks_and_setup(audio_file_path, output_path_param, temp_dir_param):
+    """
+    Performs initial checks for audio file, Hugging Face login, pipeline loading,
+    and sets up effective temporary and output paths.
+    Returns: (pipeline_obj, effective_output_path, effective_temp_dir, error_message_str_or_None)
+    """
+    if audio_file_path is None:
+        logging.warning("No audio file provided for diarization.")
+        return None, None, None, "⚠️ Please upload an audio file."
+
+    effective_output_path = output_path_param if output_path_param else DEFAULT_OUTPUT_DIR
+    effective_temp_dir = temp_dir_param # temp_dir_param already defaults to DEFAULT_TEMP_DIR in `diarize` signature
+    
+    try:
+        os.makedirs(effective_temp_dir, exist_ok=True)
+        os.makedirs(effective_output_path, exist_ok=True)
+    except OSError as e:
+        logging.error(f"Error creating directories: {e}", exc_info=True)
+        return None, None, None, f"❌ Error creating directories: {e}"
+
+
+    if not check_hf_login(): # Logs its own error and prints instructions
+        return None, None, None, "❌ Please login with huggingface-cli login first. See console for instructions."
+
+    pipeline_obj = load_pipeline() # Logs its own error and prints instructions
+    if pipeline_obj is None:
+        return None, None, None, "❌ Failed to load the diarization model. See console for details."
+    
+    return pipeline_obj, effective_output_path, effective_temp_dir, None # Success
+
+def _diarize_transcription_step(
+    transcribe_flag, whisper_model_size_param, wav_file_path, 
+    language_code, diarization_obj, original_audio_file_path_for_cleanup):
+    """
+    Handles the transcription part of the diarization process.
+    Returns: (raw_whisper_result, combined_std_whisper_lines, error_message_str_or_None)
+    """
+    if not transcribe_flag or not (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
+        return None, None, None # No transcription requested or no Whisper available
+
+    whisper_model = load_whisper_model(whisper_model_size_param)
+    if whisper_model is None:
+        # Error message already logged by load_whisper_model.
+        # Cleanup the temporary WAV file if it was created for this transcription attempt.
+        if wav_file_path and wav_file_path != original_audio_file_path_for_cleanup:
+            try: os.remove(wav_file_path)
+            except OSError as e: logging.warning(f"Could not remove temp WAV {wav_file_path} during transcription model load failure: {e}")
+        return None, None, "❌ Failed to load transcription model. See console for details."
+    
+    diar_for_transcribe = diarization_obj if WHISPERX_AVAILABLE else None
+    raw_whisper_result = transcribe_audio(whisper_model, wav_file_path, language_code, diar_for_transcribe)
+    
+    combined_std_whisper_lines = None
+    if raw_whisper_result and not WHISPERX_AVAILABLE: # Standard Whisper path needs manual combination
+        combined_std_whisper_lines = combine_diarization_with_transcript(diarization_obj, raw_whisper_result)
+        if combined_std_whisper_lines is None:
+            logging.warning("Failed to combine standard Whisper transcript with diarization for single file processing.")
+            # Not returning an error message here, as some transcript (raw_whisper_result) might still be usable.
+
+    return raw_whisper_result, combined_std_whisper_lines, None # Success
+
+
 def diarize(audio_file, output_path, known_speakers, 
             temp_dir=DEFAULT_TEMP_DIR, trim_start=None, trim_end=None, 
             transcribe=False, whisper_model_size="base", language=None,
