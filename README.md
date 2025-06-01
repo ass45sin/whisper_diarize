@@ -618,18 +618,23 @@ pip3 --version     # or pip --version
 This diagram illustrates the general flow of checking system requirements, either manually or via the provided installation scripts.
 ```mermaid
 graph TD
-    A[Start Setup] --> B{Python 3.8+?};
-    B -- No --> B_Action[Install/Update Python];
-    B -- Yes --> C{FFmpeg Installed & in PATH?};
-    C -- No --> C_Action[Install FFmpeg / Add to PATH];
-    C -- Yes --> D[Create Virtual Environment];
-    D --> E[Activate Virtual Environment];
-    E --> F[Install Python Deps via requirements.txt (includes WhisperX)];
-    F --> G{Hugging Face CLI Login?};
-    G -- No --> G_Action[Run 'huggingface--cli login'];
-    G -- Yes --> H{Model Licenses Accepted on HF?};
-    H -- No --> H_Action[Accept Licenses on Hugging Face Website];
-    H -- Yes --> L[Setup Complete with Transcription];
+    A[Start Setup] --> B{Python 3.8+?}
+    B -->|No| B_Action[Install/Update Python]
+    B -->|Yes| C{FFmpeg Installed & in PATH?}
+    C -->|No| C_Action[Install FFmpeg / Add to PATH]
+    C -->|Yes| D[Create Virtual Environment]
+    D --> E[Activate Virtual Environment]
+    E --> F[Install Python Deps via requirements.txt includes WhisperX]
+    F --> G{Hugging Face CLI Login?}
+    G -->|No| G_Action[Run huggingface-cli login]
+    G -->|Yes| H{Model Licenses Accepted on HF?}
+    H -->|No| H_Action[Accept Licenses on Hugging Face Website]
+    H -->|Yes| L[Setup Complete with Transcription]
+    
+    B_Action --> B
+    C_Action --> C
+    G_Action --> G
+    H_Action --> H
 ```
 
 ## 🚀 Automated Installation (Experimental)
