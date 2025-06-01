@@ -1,20 +1,519 @@
-# Speaker Diarization Tool
+# Speaker Diarization & Transcription Tool
 
-This project provides a command-line interface and Gradio web UI for speaker diarization using `pyannote.audio` (version 3.1).
-It leverages Hugging Face for model access and authentication, requiring users to log in via `huggingface-cli login`.
+Whisper Diarize is a tool designed for speaker diarization, identifying "who spoke when" in an audio file. It primarily utilizes `pyannote.audio` (version 3.1) for diarization and performs speech transcription using WhisperX. The tool offers both a command-line interface (CLI) and a Gradio-based web UI for user interaction. It supports various audio formats, batch processing, audio trimming, and exports results in text and JSON formats. Access to Hugging Face models requires user authentication via `huggingface-cli login`.
 
-The tool can optionally perform speech transcription using WhisperX (recommended) or standard Whisper if installed.
+The project aims to provide a user-friendly way to perform speaker diarization and transcription, leveraging powerful open-source models and libraries. It includes features for handling single files or batches, customizing speaker information, and managing output formats.
+
+## Core Functionality
+
+Whisper Diarize combines two main functionalities: speaker diarization and speech-to-text transcription.
+
+### Speaker Diarization
+This is the primary function of the tool. It uses the `pyannote.audio` library to process an audio file and determine the segments of speech attributable to different speakers. The system can either automatically detect the number of speakers or allow manual specification.
+
+The core diarization logic is handled by the `process_diarization` function (found in `diarize_huggingface_cli.py`), which interacts with a `pyannote.audio` pipeline.
+```python
+# diarize_huggingface_cli.py excerpt
+def process_diarization(pipeline, wav_file, known_speakers=None):
+    """Process the diarization with progress updates"""
+    try:
+        # ... progress updates ...
+        diarization_kwargs = {}
+        if known_speakers:
+            diarization_kwargs["num_speakers"] = int(known_speakers)
+            
+        diarization = pipeline(wav_file, **diarization_kwargs)
+        # ... formatting results and calculating stats ...
+        return diarization, output_lines, unique_speakers, speaker_times
+    except Exception as e:
+        # ... error handling ...
+        return None, [], set(), {}
+```
+
+### Speech Transcription
+The tool transcribes the spoken content in the audio using WhisperX, which provides robust transcription with word-level timestamps and alignment with diarization results.
+
+The transcription process is managed by the `transcribe_audio` function.
+```python
+# diarize_huggingface_cli.py excerpt
+def transcribe_audio(whisper_model, audio_path, language=None, diarization=None):
+    """Transcribe audio using WhisperX with speaker diarization"""
+    if whisper_model is None:
+        return None
+    try:
+        # ... progress updates and options setup ...
+        # Assumes WHISPERX_AVAILABLE is True and whisper_model is a WhisperX model
+        # result = _transcribe_with_whisperx(whisper_model, audio_path, options, language, diarization, device)
+        pass # Placeholder for actual call
+        return result # Simplified
+    except Exception as e:
+        # ... error handling ...
+        return None
+```
 
 ## Features
 
-- Speaker diarization of audio files (WAV, MP3, M4A, FLAC, etc.)
-- Transcription of speech segments (optional, requires WhisperX or Whisper)
-- Batch processing of multiple audio files from a folder
-- Audio trimming capabilities
-- Detection of number of speakers (or manual specification)
-- Export results as text and structured JSON
-- Gradio web interface for ease of use
-- Progress tracking for long operations
+| Feature                 | Description                                                                 | Availability     |
+|-------------------------|-----------------------------------------------------------------------------|------------------|
+| Speaker Diarization     | Identify who spoke when using `pyannote.audio`.                             | Core             |
+| Speech Transcription    | Convert speech to text using WhisperX.                                      | Core (if enabled)|
+| Batch Processing        | Process multiple audio files from a folder.                                 | Yes              |
+| Audio Trimming          | Process only a specific segment of an audio file.                           | Yes              |
+| Speaker Count Detection | Automatically detect or manually specify the number of speakers.            | Yes              |
+| Multiple File Formats   | Supports WAV, MP3, M4A, FLAC, etc., via FFmpeg.                             | Yes              |
+| Output Formats          | Export results as text and structured JSON.                                 | Yes              |
+| Gradio Web UI           | Easy-to-use web interface for all functionalities.                          | Yes              |
+| Progress Tracking       | Real-time progress updates for long operations.                             | Yes              |
+| GPU Acceleration        | Automatically uses GPU if available (PyTorch & CUDA).                       | Yes (Implicit)   |
+
+
+## System Overview
+
+The system is built around Python and leverages several key libraries.
+1.  **Audio Input Layer:** Handles audio file input, supporting various formats. Includes audio conversion to WAV and trimming.
+2.  **Diarization Engine:** Uses `pyannote.audio` for speaker segmentation.
+3.  **Transcription Engine:** Uses `WhisperX` for speech-to-text.
+4.  **Output Formatting:** Generates text and JSON outputs.
+5.  **User Interface:** Command-Line Interface (CLI) and Gradio Web UI.
+
+### System Flow Diagram
+This diagram illustrates the general processing flow:
+```mermaid
+graph TD
+    A[Audio File Input] --> B{Audio Preprocessing};
+    B -- WAV --> C[Speaker Diarization pyannote.audio];
+    C --> D{Transcription?};
+    D -- Yes --> E[Speech Transcription WhisperX];
+    E --> F[Combine Results];
+    D -- No --> G[Format Diarization Output];
+    F --> H[Format Combined Output];
+    G --> I[Generate Text/JSON];
+    H --> I;
+
+    subgraph Audio Preprocessing
+        B1[Format Conversion to WAV]
+        B2[Trimming Optional]
+    end
+    B1 --> C;
+    B2 --> C;
+```
+
+### High-Level Component Interaction
+```mermaid
+graph TD
+    subgraph UserInput
+        UI[Gradio UI / CLI Params]
+    end
+
+    subgraph SystemCore
+        A[Audio File/Folder] -->|Input| P[Main Script: diarize_huggingface_cli.py]
+        P -->|Audio Path| AC(Audio Conversion via FFmpeg)
+        AC -->|WAV File| D[Diarization Engine: pyannote.audio]
+        D -->|Speaker Segments| P
+        P -->|Optional: WAV, Segments| T(Transcription Engine: WhisperX)
+        T -->|Text Transcript| P
+        P -->|Formatted Results| O[Output: Text, JSON]
+    end
+
+    subgraph ExternalServices
+        HF[Hugging Face Hub] <-->|Model Download/Auth| D
+        HF <-->|Model Download/Auth| T
+    end
+
+    UI --> A
+    O --> UI
+```
+
+### Single File Processing Sequence
+The `process_single_file` function (or equivalent logic called by the UI) orchestrates the processing for one audio file.
+```mermaid
+sequenceDiagram
+    participant User
+    participant GradioUI
+    participant MainScript as diarize_huggingface_cli.py
+    participant AudioConverter as FFmpeg
+    participant DiarizationPipeline as pyannote.audio
+    participant TranscriptionModel as WhisperX
+
+    User-->>GradioUI: Uploads audio, sets options
+    GradioUI-->>MainScript: Calls process_single_file()
+    activate MainScript
+
+    MainScript-->>MainScript: Initial checks (HF login, models)
+    MainScript-->>AudioConverter: convert_audio_to_wav()
+    activate AudioConverter
+    AudioConverter-->>MainScript: WAV file path
+    deactivate AudioConverter
+
+    MainScript-->>DiarizationPipeline: process_diarization()
+    activate DiarizationPipeline
+    DiarizationPipeline-->>MainScript: Diarization results
+    deactivate DiarizationPipeline
+
+    alt Transcription Enabled
+        MainScript-->>TranscriptionModel: load_whisper_model() (WhisperX)
+        activate TranscriptionModel
+        TranscriptionModel-->>MainScript: Loaded model
+        deactivate TranscriptionModel
+
+        MainScript-->>TranscriptionModel: transcribe_audio() (WhisperX)
+        activate TranscriptionModel
+        TranscriptionModel-->>MainScript: Raw transcript
+        deactivate TranscriptionModel
+    end
+
+    MainScript-->>MainScript: _build_final_transcript_string()
+    MainScript-->>MainScript: _save_all_outputs()
+    MainScript-->>GradioUI: Results (text, file paths)
+    deactivate MainScript
+    GradioUI-->>User: Displays results
+```
+
+## Workflow Details
+
+### Audio Processing Workflow Visualization
+The overall audio processing workflow can be visualized as follows:
+
+```mermaid
+graph TD
+    A[Audio Input File/Folder] --> B{Mode?}
+    B -->|Single File| C[main_single_file_processing]
+    B -->|Batch Folder| D[process_batch]
+
+    D --> E[Iterate Audio Files]
+    E --> C
+
+    subgraph SF [Single File Workflow]
+        C --> C1[convert_audio_to_wav]
+        C1 --> C2[process_diarization]
+        C2 --> C3{Transcription Enabled?}
+        C3 -->|Yes| C4[load_whisper_model WhisperX]
+        C4 --> C5[transcribe_audio WhisperX]
+        C5 --> C6[Format Results]
+        C3 -->|No| C6
+        C6 --> C7[_build_final_transcript_string]
+        C7 --> C8[_save_all_outputs]
+        C8 --> C9[TXT Output]
+        C8 --> C10{JSON Export?}
+        C10 -->|Yes| C11[JSON Output]
+        C10 -->|No| C12[End Processing]
+        C11 --> C12
+        C9 --> C12
+    end
+
+    C12 --> F[Output Results to UI/Files]
+    D --> F
+```
+
+
+
+
+A more detailed sequence for a single file with transcription:
+```mermaid
+sequenceDiagram
+    participant User
+    participant GradioUI as "Gradio UI"
+    participant CoreWorkflow as "main_single_file_processing_logic"
+    participant AudioConv as "convert_audio_to_wav"
+    participant DiarizeProc as "process_diarization"
+    participant WhisperModelLoader as "load_whisper_model (WhisperX)"
+    participant TranscribeProc as "transcribe_audio (WhisperX)"
+    participant OutputBuilder as "_build_final_transcript_string"
+    participant FileSaver as "_save_all_outputs"
+
+    User-->>GradioUI: Upload Audio, Set Options, Run
+    GradioUI-->>CoreWorkflow: Start processing(audio_path, options)
+    activate CoreWorkflow
+
+    CoreWorkflow-->>AudioConv: convert(audio_path, trim_opts)
+    activate AudioConv
+    AudioConv-->>CoreWorkflow: wav_file_path
+    deactivate AudioConv
+
+    CoreWorkflow-->>DiarizeProc: diarize(pipeline, wav_file_path, num_speakers)
+    activate DiarizeProc
+    DiarizeProc-->>CoreWorkflow: diarization_obj, speaker_lines
+    deactivate DiarizeProc
+
+    alt Transcription Enabled
+        CoreWorkflow-->>WhisperModelLoader: load_model(model_size)
+        activate WhisperModelLoader
+        WhisperModelLoader-->>CoreWorkflow: whisper_model_instance
+        deactivate WhisperModelLoader
+
+        CoreWorkflow-->>TranscribeProc: transcribe(whisper_model, wav_file, lang, diarization_obj)
+        activate TranscribeProc
+        TranscribeProc-->>CoreWorkflow: raw_whisper_result
+        deactivate TranscribeProc
+    end
+
+    CoreWorkflow-->>OutputBuilder: build(diarization_obj, whisper_result, opts)
+    activate OutputBuilder
+    OutputBuilder-->>CoreWorkflow: final_text_content
+    deactivate OutputBuilder
+
+    CoreWorkflow-->>FileSaver: save(output_dir, text_content, json_data_if_export)
+    activate FileSaver
+    FileSaver-->>CoreWorkflow: saved_file_paths, status
+    deactivate FileSaver
+
+    CoreWorkflow-->>GradioUI: Display results, download_links
+    deactivate CoreWorkflow
+    GradioUI-->>User: Show output
+```
+
+### Speaker Diarization Feature Workflow
+High-level workflow for diarization:
+```mermaid
+graph TD
+    A[Audio File Input] --> B[Audio Preprocessing];
+    B --> C[Convert to WAV];
+    C --> D[Load Diarization Pipeline];
+    D --> E[Perform Diarization];
+    E --> F[Transcription?];
+    F -- Yes --> G[Load Transcription Model - WhisperX];
+    G --> H[Perform Transcription - WhisperX];
+    H --> I[Format Diarization & Transcription];
+    F -- No --> J[Format Diarization Results];
+    I --> J;
+    J --> K[Save Outputs .txt, .json];
+    K --> L[Display Results in UI / CLI];
+```
+
+Sequence Diagram for `diarize()` function call (core diarization and transcription with WhisperX):
+```mermaid
+sequenceDiagram
+    participant User
+    participant GradioUI_or_CLI as UI
+    participant diarize_func as diarize()
+    participant audio_utils as convert_audio_to_wav()
+    participant pyannote_pipeline as load_pipeline() / pipeline()
+    participant whisperx_model_loader as load_whisper_model() (WhisperX)
+    participant whisperx_transcriber as transcribe_audio() (WhisperX)
+    participant result_formatter as _build_final_transcript_string() / format_results_as_json()
+    participant file_saver as _save_all_outputs()
+
+    User-->>UI: Provides audio file & options
+    UI-->>diarize_func: Call diarize(audio_file, ...)
+    activate diarize_func
+
+    diarize_func-->>audio_utils: convert_audio_to_wav(audio_file, ...)
+    activate audio_utils
+    audio_utils-->>diarize_func: wav_file_path
+    deactivate audio_utils
+
+    diarize_func-->>pyannote_pipeline: load_pipeline()
+    activate pyannote_pipeline
+    pyannote_pipeline-->>diarize_func: pipeline_obj
+    deactivate pyannote_pipeline
+
+    diarize_func-->>pyannote_pipeline: pipeline_obj(wav_file_path, num_speakers)
+    activate pyannote_pipeline
+    pyannote_pipeline-->>diarize_func: diarization_result
+    deactivate pyannote_pipeline
+
+    alt Transcription Enabled
+        diarize_func-->>whisperx_model_loader: load_whisper_model(model_size)
+        activate whisperx_model_loader
+        whisperx_model_loader-->>diarize_func: whisper_model
+        deactivate whisperx_model_loader
+
+        diarize_func-->>whisperx_transcriber: transcribe_audio(whisper_model, wav_file_path, ...)
+        activate whisperx_transcriber
+        whisperx_transcriber-->>diarize_func: raw_whisper_result
+        deactivate whisperx_transcriber
+    end
+
+    diarize_func-->>result_formatter: _build_final_transcript_string(...)
+    activate result_formatter
+    result_formatter-->>diarize_func: transcript_text_content
+    deactivate result_formatter
+
+    opt Export JSON
+        diarize_func-->>result_formatter: format_results_as_json(...)
+        activate result_formatter
+        result_formatter-->>diarize_func: json_data
+        deactivate result_formatter
+    end
+
+    diarize_func-->>file_saver: _save_all_outputs(output_path, ..., transcript_text_content, json_data)
+    activate file_saver
+    file_saver-->>diarize_func: save_status_messages
+    deactivate file_saver
+
+    diarize_func-->>UI: Final status message, output file path(s)
+    deactivate diarize_func
+```
+
+### Speech Transcription Feature Workflow (WhisperX)
+Transcription process flow using WhisperX:
+```mermaid
+graph TD
+    A[Audio File Input] --> B{Transcription Enabled?};
+    B -- Yes --> C{WhisperX Installed?};
+    B -- No --> Z[Skip Transcription];
+    C -- Yes --> D[Load WhisperX Model];
+    C -- No --> E[Error: WhisperX Not Installed - Should not happen if it's a core dep];
+    D -- Success --> H[Transcribe with WhisperX using Diarization Data];
+    D -- Failure --> G[Error: Model Load Failed];
+    H --> L[Format Output];
+    L --> M[Display/Save Transcript];
+    E --> Z;
+    G --> Z;
+```
+
+Sequence of operations in `transcribe_audio` (using WhisperX):
+```mermaid
+sequenceDiagram
+    participant User
+    participant App as diarize_huggingface_cli.py
+    participant WhisperX_Model as WhisperX Model
+    participant DiarizationResults
+
+    User-->>App: Initiates process with transcription enabled
+    App-->>App: update_progress("Starting transcription", ...)
+    App-->>WhisperX_Model: Determine device (CUDA or CPU)
+    App-->>App: print("Using WhisperX")
+    App-->>DiarizationResults: Get diarization data
+    App-->>WhisperX_Model: _transcribe_with_whisperx(model, audio, options, lang, diarization_data, device)
+    WhisperX_Model-->>App: Transcription result (aligned)
+    App-->>App: update_progress("Transcription complete", ...)
+    App-->>User: Return raw_whisper_result
+```
+
+## Output Formats
+
+The tool generates results in both plain text and structured JSON formats.
+
+### Text Output (`.txt`)
+The text output includes:
+- Detected number of speakers.
+- Speaking time and percentage for each speaker.
+- Diarized segments with timestamps and speaker labels.
+- If transcription is enabled, transcribed text is interleaved with speaker labels.
+```
+📊 Detected 2 speaker(s)
+  - SPEAKER_01: 35.7s (60.0%)
+  - SPEAKER_00: 23.8s (40.0%)
+Audio trimmed from 0s to 60s
+
+0:00:01 - 0:00:05 SPEAKER_01: Hello, this is speaker one.
+0:00:06 - 0:00:10 SPEAKER_00: And this is speaker two.
+...
+```
+
+### JSON Output (`.json`)
+A structured JSON file containing detailed information.
+JSON Output Structure Diagram:
+```mermaid
+graph TD
+    JSON_Output["JSON Object"] --> FI["file_info"];
+    JSON_Output --> SGTS["segments (list)"];
+    JSON_Output --> SPKRS["speakers (object)"];
+
+    FI --> FIPATH["path: string"];
+    FI --> FIFN["filename: string"];
+    FI --> FITR["trimmed: boolean"];
+    FI --> FIST["trim_start: float | null"];
+    FI --> FIEND["trim_end: float | null"];
+
+    SGTS --> SGT["Segment Object"];
+    SGT --> SGTSTART["start: float"];
+    SGT --> SGTEND["end: float"];
+    SGT --> SGTSPKR["speaker: string"];
+    SGT --> SGTTEXT["text: string (optional)"];
+
+    SPKRS --> SPKR_ID["SPEAKER_ID (e.g., SPEAKER_00)"];
+    SPKR_ID --> SPKRTT["talk_time: float"];
+    SPKR_ID --> SPKRPERC["percentage: float"];
+    SPKR_ID --> SPKRSEGIDX["segments: list[int] (indices)"];
+```
+
+## Gradio Web UI Guide
+
+The Gradio Web UI provides an interactive way to use the tool.
+Main UI Structure:
+```mermaid
+graph TD
+    A[Gradio App: gr.Blocks] --> B[Main Title: Speaker Diarization]
+    B --> C[Tabs: interface_tabs]
+    C --> D["Single File Tab (single_tab)"]
+    C --> E["Batch Processing Tab (batch_tab)"]
+    B --> F[Progress Bar: progress_info]
+    B --> G[Status Text: status_text]
+    B --> H[Output File Path - Hidden: output_file]
+    B --> I[Download Button: download_btn]
+    B --> J[Cancel Button: cancel_btn]
+    B --> K[Help & Documentation: gr.Accordion]
+```
+
+Single File Processing Tab Components:
+```mermaid
+graph TD
+    subgraph Single File Tab
+        direction TB
+        A[Audio Input: gr.Audio] --> B{Settings Tabs}
+        B --> C[Basic Settings]
+        B --> D[Advanced Settings]
+        C --> E[Output Folder: gr.Textbox]
+        C --> F[Number of Speakers: gr.Number]
+        C --> G[Include Speaker Labels: gr.Checkbox]
+        C --> H[Transcribe Speech: gr.Checkbox]
+        C --> I[Export JSON: gr.Checkbox]
+        D --> J[Temporary Folder: gr.Textbox]
+        D --> K[Trim Start: gr.Number]
+        D --> L[Trim End: gr.Number]
+        M[Run Diarization Button: gr.Button]
+    end
+```
+
+Single File Processing Flow via UI:
+```mermaid
+sequenceDiagram
+    participant User
+    participant GradioUI
+    participant process_audio_interface_single as PAIS
+    participant BackendLogic
+
+    User-->>GradioUI: Uploads audio, sets options
+    User-->>GradioUI: Clicks "Run Diarization"
+    GradioUI-->>PAIS: Calls with UI inputs
+    activate PAIS
+    PAIS-->>BackendLogic: check_hf_login()
+    PAIS-->>BackendLogic: load_pipeline()
+    PAIS-->>BackendLogic: convert_audio_to_wav(audio_file, temp_dir, trim_start, trim_end)
+    BackendLogic-->>PAIS: wav_file, was_trimmed
+    PAIS-->>BackendLogic: process_diarization(pipeline, wav_file, known_speakers)
+    BackendLogic-->>PAIS: diarization, base_diarization_lines, ...
+    alt Transcription Enabled
+        PAIS-->>BackendLogic: load_whisper_model(whisper_model_size) (WhisperX)
+        BackendLogic-->>PAIS: whisper_model
+        PAIS-->>BackendLogic: transcribe_audio(whisper_model, wav_file, language, diar_for_transcribe) (WhisperX)
+        BackendLogic-->>PAIS: raw_whisper_result
+    end
+    PAIS-->>BackendLogic: _build_final_transcript_string(...)
+    BackendLogic-->>PAIS: transcript_text_content
+    PAIS-->>BackendLogic: _save_all_outputs(...)
+    BackendLogic-->>PAIS: saved_text_file_path, save_status_messages
+    PAIS-->>GradioUI: results_text, saved_text_file_path
+    deactivate PAIS
+    GradioUI-->>User: Displays results_text
+    GradioUI-->>User: Enables Download button if saved_text_file_path exists
+```
+
+Key Features Accessible via UI:
+
+| Feature                  | UI Control(s)                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Speaker Diarization      | "Run Diarization" / "Run Batch Diarization" buttons                                                           |
+| Multiple File Formats    | `gr.Audio` input (handles various types via FFmpeg)                                                           |
+| Speaker Statistics       | Output text includes speaker times                                                                            |
+| Batch Processing         | "Batch Processing" tab, Input/Output folder textboxes                                                         |
+| Audio Trimming           | "Trim start" / "Trim end" number inputs (Single File tab)                                                     |
+| Transcription            | "Transcribe speech" checkbox, Whisper model dropdown, Language dropdown                                       |
+| Structured JSON Output   | "Export results as JSON" checkbox                                                                             |
+| Progress Tracking        | `gr.Progress` bar and `gr.Textbox` for status messages                                                        |
+
 
 ## Setup
 
@@ -77,11 +576,11 @@ pip3 --version     # or pip --version
             ```
         *   On Windows (Command Prompt):
             ```bash
-            venv\\Scripts\\activate.bat
+            venv\Scripts\activate.bat
             ```
         *   On Windows (PowerShell):
             ```bash
-            .\\venv\\Scripts\\Activate.ps1
+            .\venv\Scripts\Activate.ps1
             ```
             (If you get an error about script execution policy in PowerShell, you might need to run: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` and then try activating again.)
 
@@ -92,7 +591,7 @@ pip3 --version     # or pip --version
     ```bash
     pip install -r requirements.txt
     ```
-    This will install `huggingface_hub` which provides the `huggingface-cli` tool.
+    This will install `huggingface_hub` which provides the `huggingface-cli` tool, and `WhisperX` along with other core dependencies.
 
 4.  **Install FFmpeg:** This is an essential external dependency for audio processing.
     *   **macOS (using Homebrew):**
@@ -115,6 +614,24 @@ pip3 --version     # or pip --version
         *   [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (Click "Access repository")
         *   [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (Click "Access repository")
 
+### Setup and Dependency Check Flow
+This diagram illustrates the general flow of checking system requirements, either manually or via the provided installation scripts.
+```mermaid
+graph TD
+    A[Start Setup] --> B{Python 3.8+?};
+    B -- No --> B_Action[Install/Update Python];
+    B -- Yes --> C{FFmpeg Installed & in PATH?};
+    C -- No --> C_Action[Install FFmpeg / Add to PATH];
+    C -- Yes --> D[Create Virtual Environment];
+    D --> E[Activate Virtual Environment];
+    E --> F[Install Python Deps via requirements.txt (includes WhisperX)];
+    F --> G{Hugging Face CLI Login?};
+    G -- No --> G_Action[Run 'huggingface--cli login'];
+    G -- Yes --> H{Model Licenses Accepted on HF?};
+    H -- No --> H_Action[Accept Licenses on Hugging Face Website];
+    H -- Yes --> L[Setup Complete with Transcription];
+```
+
 ## 🚀 Automated Installation (Experimental)
 
 For convenience, platform-specific installation scripts are provided to automate some of the setup steps. These scripts are experimental and aim to simplify the process. It's recommended to understand the manual steps they perform.
@@ -130,8 +647,8 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Check for an existing Python installation.
     *   Offer to create a Python virtual environment (in a folder named `venv`).
     *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt`.
-    *   Check if FFmpeg is accessible in your system\'s PATH and provide guidance if not.
+    *   Install Python dependencies from `requirements.txt` (this will include WhisperX).
+    *   Check if FFmpeg is accessible in your system's PATH and provide guidance if not.
     *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
 
 ### macOS and Linux (`install.sh`)
@@ -149,18 +666,18 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Check for Python 3 and pip3.
     *   Offer to create a Python virtual environment (in a folder named `venv`).
     *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt`.
+    *   Install Python dependencies from `requirements.txt` (this will include WhisperX).
     *   Check if FFmpeg is accessible and provide OS-specific installation advice if not (Homebrew for macOS, apt for Debian/Ubuntu, etc.).
     *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
 
 ### Important Notes for Automated Installation
 
 *   **Review Scripts:** These scripts automate the manual setup steps. You can review the content of `install.bat` or `install.sh` in a text editor to understand the commands they execute.
-*   **FFmpeg Installation:** While the scripts check for FFmpeg and provide common installation commands, you might need to perform additional manual steps depending on your specific OS distribution or if you choose a manual FFmpeg installation. Ensuring FFmpeg is correctly added to your system\'s PATH is crucial.
+*   **FFmpeg Installation:** While the scripts check for FFmpeg and provide common installation commands, you might need to perform additional manual steps depending on your specific OS distribution or if you choose a manual FFmpeg installation. Ensuring FFmpeg is correctly added to your system's PATH is crucial.
 *   **Hugging Face Authentication:** The scripts will guide you, but the `huggingface-cli login` process and accepting model licenses on the Hugging Face website are interactive steps you must complete carefully using your Hugging Face account.
 *   **Virtual Environment Activation:** After the installation script completes, you **must manually activate the virtual environment** in your terminal session before running the main Python application.
-    *   Windows (Command Prompt): `venv\\Scripts\\activate.bat`
-    *   Windows (PowerShell): `.\\venv\\Scripts\\Activate.ps1`
+    *   Windows (Command Prompt): `venv\Scripts\activate.bat`
+    *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
     *   macOS/Linux: `source venv/bin/activate`
 
 ## Usage
@@ -175,11 +692,39 @@ This will launch a Gradio web interface in your browser.
 
 Refer to the "Help & Documentation" section within the Gradio UI or the sections below for more detailed instructions on using the interface, supported formats, and troubleshooting.
 
-## 📚 Gradio UI Documentation (Mirrored from UI)
+## 📦 System Requirements
 
-This section mirrors the help documentation available directly within the Gradio user interface.
+### Essential Software & Libraries
 
-*(The content from the "Help & Documentation" accordion in the Gradio UI is extensive and largely self-contained. For brevity in this README, users are encouraged to refer to the UI itself or the specific sections below for key information like "Common Issues & Solutions" and "System Requirements" which have been updated with consolidated information.)*
+*   **Python**: 3.8 or newer
+*   **FFmpeg**: Required for audio processing and conversion. Must be installed and accessible in your system's PATH.
+*   **Python Libraries** (installed via `pip install -r requirements.txt`):
+    *   `gradio`: For the web user interface.
+    *   `pyannote.audio` (typically version 3.1 or as specified in `requirements.txt`): Core library for speaker diarization.
+    *   `torch` (PyTorch, >= 1.12.0 recommended): Deep learning framework used by `pyannote.audio` and `WhisperX`.
+    *   `torchaudio`: Audio library for PyTorch.
+    *   `pandas`: For data manipulation.
+    *   `huggingface_hub`: Provides `huggingface-cli` for authentication and model downloads, and is used by `pyannote.audio`.
+    *   `whisperx @ git+https://github.com/m-bain/whisperx.git`: For speech transcription.
+
+### Hardware Recommendations
+
+*   **CPU**: A modern multi-core processor is recommended.
+*   **RAM**:
+    *   Minimum: 8GB.
+    *   Recommended: 16GB or more, particularly when using larger Whisper models for transcription.
+*   **GPU (Optional but Highly Recommended for Speed)**:
+    *   An NVIDIA GPU with CUDA support (4GB+ VRAM) will significantly speed up both diarization and transcription. The script automatically uses the GPU if PyTorch detects a compatible CUDA environment.
+*   **Disk Space**:
+    *   At least 10-15GB of free space is recommended for storing downloaded models (which can be several gigabytes each, especially transcription models) and temporary files.
+
+### Internet Connection
+
+*   **Required**: An active internet connection is necessary for:
+    *   Initial download of Python packages (including WhisperX from GitHub).
+    *   Downloading models from Hugging Face upon first use.
+    *   Hugging Face authentication (`huggingface-cli login`).
+*   **Not Required for Normal Operation**: Once models are downloaded and cached, the script can run offline for processing, provided no new models need to be fetched.
 
 ## ⚠️ Common Issues & Solutions
 
@@ -226,21 +771,13 @@ This section provides solutions to common problems you might encounter.
         *   Verify that the directory containing `ffmpeg` (or `ffmpeg.exe` on Windows) is included in your system's PATH environment variable.
         *   If the audio file is corrupted, try a different file.
 
-### Transcription Issues
+### Transcription Issues (WhisperX)
 
-*   **Error**: `"⚠️ No transcription system is installed."` or `"❌ Failed to load transcription model."`
-    *   **Solution**: For transcription, you need either WhisperX (recommended) or standard OpenAI Whisper installed.
-        *   **WhisperX (Recommended):**
-            ```bash
-            pip install git+https://github.com/m-bain/whisperx.git
-            ```
-        *   **Standard Whisper:**
-            ```bash
-            pip install openai-whisper
-            ```
-    *   If a Whisper model fails to load (e.g., "Error loading WhisperX model"):
+*   **Error**: `"❌ Failed to load transcription model (WhisperX)."`
+    *   **Solution**:
+        *   Ensure WhisperX was installed correctly via `pip install -r requirements.txt`. Check for any errors during that installation.
         *   Check you have enough RAM/VRAM for the selected model size (see "Model Sizes" in the UI's Transcription help tab). Try a smaller model (e.g., "base" or "small").
-        *   Ensure the installation of Whisper/WhisperX and its dependencies completed without errors.
+        *   Ensure all dependencies for WhisperX (like `faster-whisper`) were installed correctly.
 
 ### General Troubleshooting
 
@@ -248,50 +785,8 @@ This section provides solutions to common problems you might encounter.
 *   **Restart Environment**: If you've made changes or installed new packages, try restarting your Python environment (deactivate and reactivate your virtual environment) or even your machine.
 *   **Upgrade Packages**: Consider upgrading key packages if you suspect a version incompatibility:
     ```bash
-    pip install --upgrade pyannote.audio huggingface_hub torch torchaudio gradio
+    pip install --upgrade pyannote.audio huggingface_hub torch torchaudio gradio whisperx
     ```
-
-## 📦 System Requirements
-
-### Essential Software & Libraries
-
-*   **Python**: 3.8 or newer
-*   **FFmpeg**: Required for audio processing and conversion. Must be installed and accessible in your system's PATH.
-*   **Python Libraries** (installed via `pip install -r requirements.txt`):
-    *   `gradio`: For the web user interface.
-    *   `pyannote.audio` (typically version 3.1 or as specified in `requirements.txt`): Core library for speaker diarization.
-    *   `torch` (PyTorch, >= 1.12.0 recommended): Deep learning framework used by `pyannote.audio`.
-    *   `torchaudio`: Audio library for PyTorch.
-    *   `pandas`: For data manipulation.
-    *   `huggingface_hub`: Provides `huggingface-cli` for authentication and model downloads, and is used by `pyannote.audio`.
-
-### Optional Dependencies (for Transcription)
-
-*   **WhisperX (Recommended):**
-    *   Installation: `pip install git+https://github.com/m-bain/whisperx.git`
-    *   Provides faster and often more accurate transcription with better word-level timestamps.
-*   **OpenAI Whisper (Fallback):**
-    *   Installation: `pip install openai-whisper`
-    *   Standard Whisper implementation.
-
-### Hardware Recommendations
-
-*   **CPU**: A modern multi-core processor is recommended.
-*   **RAM**:
-    *   Minimum: 8GB (especially if not using large transcription models).
-    *   Recommended: 16GB or more, particularly when using larger Whisper models for transcription.
-*   **GPU (Optional but Highly Recommended for Speed)**:
-    *   An NVIDIA GPU with CUDA support (4GB+ VRAM) will significantly speed up both diarization and transcription. The script automatically uses the GPU if PyTorch detects a compatible CUDA environment.
-*   **Disk Space**:
-    *   At least 10-15GB of free space is recommended for storing downloaded models (which can be several gigabytes each, especially transcription models) and temporary files.
-
-### Internet Connection
-
-*   **Required**: An active internet connection is necessary for:
-    *   Initial download of Python packages.
-    *   Downloading models from Hugging Face upon first use.
-    *   Hugging Face authentication (`huggingface-cli login`).
-*   **Not Required for Normal Operation**: Once models are downloaded and cached, the script can run offline for processing, provided no new models need to be fetched.
 
 ## Contributing
 
