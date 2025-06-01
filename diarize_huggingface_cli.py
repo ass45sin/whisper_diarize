@@ -1369,7 +1369,7 @@ def create_interface():
         # Bottom copyright/version info 
         gr.Markdown("""
         ---
-        *Speaker Diarization Tool v3.1 | Powered by pyannote.audio and Whisper | © 2023*
+        *Speaker Diarization Tool v3.1 | Powered by pyannote.audio and Whisper | © 2025*
         """)
         
     return demo
