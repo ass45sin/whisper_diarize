@@ -10,7 +10,7 @@ echo "This script will attempt to:"
 echo "  1. Check for Python 3 and pip3."
 echo "  2. Create a Python virtual environment (recommended)."
 echo "  3. Activate the virtual environment for this script's operations."
-echo "  4. Install required Python packages from requirements.txt."
+echo "  4. Install required Python packages from requirements.txt (including WhisperX)."
 echo "  5. Check for FFmpeg."
 echo "  6. Guide you on Hugging Face CLI login and license acceptance."
 echo ""
@@ -148,6 +148,7 @@ clear
 # --- Section 5: Install Dependencies ---
 echo "################################################################################"
 echo "# Step 4: Installing Python Dependencies from requirements.txt               #"
+echo "# This will include WhisperX for transcription.                              #"
 echo "################################################################################"
 echo ""
 if [ -f "requirements.txt" ]; then
@@ -166,10 +167,12 @@ if [ -f "requirements.txt" ]; then
         echo "  - Errors in the 'requirements.txt' file."
         echo "  - Python/pip setup issues."
         echo "  - If you opted out of virtual environment creation/activation, ensure one is active."
+        echo "  - WhisperX installation (from GitHub) might have specific build dependencies."
+        echo "    Please check the WhisperX GitHub page for any prerequisites if errors persist."
         echo ""
         echo "Please check the error messages above for more details."
     else
-        color_green "Python dependencies installed successfully (or already satisfied)!"
+        color_green "Python dependencies (including WhisperX) installed successfully (or already satisfied)!"
     fi
 else
     color_red "ERROR: requirements.txt not found in the current directory."
@@ -198,95 +201,95 @@ else
         echo "  brew install ffmpeg"
     elif [ "$OS_TYPE" == "Linux" ]; then
         if command -v apt &> /dev/null; then
-            echo "On Debian/Ubuntu based Linux, you can install FFmpeg using apt:"
+            echo "On Debian/Ubuntu based systems, you can install FFmpeg using apt:"
             echo "  sudo apt update && sudo apt install ffmpeg"
-        elif command -v dnf &> /dev/null || command -v yum &> /dev/null; then
-            echo "On Fedora/RHEL based Linux, you can install FFmpeg using dnf/yum (may require enabling RPM Fusion repository):"
-            echo "  sudo dnf install ffmpeg  # or yum install ffmpeg"
+        elif command -v yum &> /dev/null || command -v dnf &> /dev/null; then
+            echo "On Fedora/RHEL based systems, you can install FFmpeg using dnf or yum."
+            echo "  You may need to enable a repository like RPM Fusion first."
+            echo "  Example: sudo dnf install ffmpeg (after enabling repository)"
         else
-            echo "Please install FFmpeg using your system's package manager."
+            echo "Please consult your Linux distribution's documentation for installing FFmpeg."
         fi
-        echo "Alternatively, download static builds from https://johnvansickle.com/ffmpeg/"
     else
-        echo "Please download and install FFmpeg from: https://ffmpeg.org/download.html"
+        echo "Please install FFmpeg for your operating system and ensure it is in your PATH."
     fi
     echo ""
-    echo "After installation, ensure the directory containing 'ffmpeg' is added"
-    echo "to your system's PATH environment variable if it's not already."
+    echo "After installing FFmpeg, you might need to open a new terminal or re-run this script."
 fi
 echo ""
 read -p "Press Enter to continue..."
 clear
 
-# --- Section 7: Hugging Face Login Guidance ---
+# --- Section 7: Hugging Face CLI Login and Model License Acceptance ---
 echo "################################################################################"
-echo "# Step 6: Hugging Face Login & Model Licenses (Manual Steps)                 #"
+echo "# Step 6: Hugging Face CLI Login & Model License Acceptance                  #"
 echo "################################################################################"
 echo ""
-color_yellow "IMPORTANT NEXT STEPS (to be done manually in your terminal):"
+echo "This tool requires access to pre-trained models from Hugging Face."
+echo "You need to:
+  1. Log in to Hugging Face using the CLI.
+  2. Accept the user agreements for the required models on the Hugging Face website."
 echo ""
-echo "1. Activate the virtual environment (if you created one and it's not already active):"
-if [ -n "$VENV_DIR" ]; then
-    echo "   source $VENV_DIR/bin/activate"
-fi
-echo ""
-echo "2. Log in to Hugging Face using the command line:"
-echo ""
-echo "   huggingface-cli login"
-echo ""
-echo "   You will be prompted for a Hugging Face User Access Token. Create one"
-echo "   with 'read' permissions at: https://huggingface.co/settings/tokens"
-echo ""
-echo "3. Accept Model Licenses:"
-echo "   Using the SAME Hugging Face account, you MUST accept the user agreements"
-echo "   for the required models on the Hugging Face website:"
-echo "     - https://huggingface.co/pyannote/speaker-diarization-3.1 (Click 'Access repository')"
-echo "     - https://huggingface.co/pyannote/segmentation-3.0 (Click 'Access repository')"
-echo ""
-echo "These steps are crucial for the application to download and use the models."
-echo ""
-read -p "Press Enter to continue..."
-clear
 
-# --- Section 8: Make Script Executable (Guidance) ---
-echo "################################################################################"
-echo "# Note on Script Execution                                                     #"
-echo "################################################################################"
+echo "Guidance for Hugging Face CLI Login:"
+echo "------------------------------------"
+echo "Run the following command in your terminal (after this script finishes if you are not already logged in):"
+color_yellow "  huggingface-cli login"
+echo "You will be prompted for a Hugging Face User Access Token."
+echo "Create one with 'read' permissions at: https://huggingface.co/settings/tokens"
 echo ""
-echo "If you downloaded this script (install.sh), you might need to make it executable"
-echo "before running it next time or if you share it:"
-echo "  chmod +x install.sh"
-echo ""
-read -p "Press Enter to continue..."
-clear
 
-# --- Section 9: Completion Message ---
-echo "################################################################################"
-echo "# Setup Script Completed!                                                      #"
-echo "################################################################################"
+echo "Guidance for Accepting Model Licenses:"
+echo "--------------------------------------"
+echo "Using the *same Hugging Face account* you logged in with via the CLI,"
+echo "you MUST visit and accept the terms for the following models:"
+color_yellow "  1. pyannote/speaker-diarization-3.1: https://huggingface.co/pyannote/speaker-diarization-3.1"
+color_yellow "  2. pyannote/segmentation-3.0: https://huggingface.co/pyannote/segmentation-3.0"
+echo "(Click on 'Access repository' or similar button on the model pages if you haven't already)"
 echo ""
-color_green "This script has finished its automated tasks."
-echo ""
-echo "REMEMBER THE FOLLOWING MANUAL STEPS if you haven't done them yet:"
-echo "  - Complete the Hugging Face login ('huggingface-cli login')."
-echo "  - Accept the model licenses on the Hugging Face website."
-echo ""
-if [ -n "$VENV_DIR" ]; then
-    echo "To run the Python application ('diarize_huggingface_cli.py'),"
-    echo "first activate the virtual environment in your terminal session:"
-    echo ""
-    color_yellow "    source $VENV_DIR/bin/activate"
-    echo ""
+
+if command -v huggingface-cli &> /dev/null; then
+    echo "Attempting to check current Hugging Face login status..."
+    if huggingface-cli whoami &> /dev/null; then
+        color_green "You appear to be logged in to Hugging Face CLI."
+        echo "Current user: $(huggingface-cli whoami)"
+        color_yellow "Please ensure you have also accepted the model licenses as described above."
+    else
+        color_yellow "You do not appear to be logged in to Hugging Face CLI."
+        color_yellow "Please run 'huggingface-cli login' after this script completes."
+    fi
 else
-    echo "If you are using a virtual environment, make sure it's activated"
-    echo "before running the Python application."
-    echo ""
+    color_yellow "huggingface-cli is not found. It should have been installed with requirements.txt."
+    color_yellow "If login issues persist, ensure it's installed and in your PATH (usually handled by venv activation)."
 fi
-echo "Then, run the script using:"
 echo ""
-echo "    python3 diarize_huggingface_cli.py"
+read -p "Press Enter to continue..."
+clear
+
+# --- Section 8: Post-Installation Instructions ---
+echo "################################################################################"
+echo "# Setup Script Completed - IMPORTANT Next Steps                              #"
+echo "################################################################################"
 echo ""
-echo "Refer to README.md for more details and troubleshooting."
+color_green "The automated setup script has finished."
 echo ""
-echo "Exiting setup script."
-exit 0
+
+if [ -n "$VENV_DIR" ] && [ -f "$VENV_DIR/bin/activate" ]; then
+    color_yellow "REMINDER: To run the Python application, you MUST activate the virtual environment"
+    color_yellow "in EVERY NEW terminal session you open for this project:"
+    echo "  source $VENV_DIR/bin/activate"
+else
+    color_yellow "REMINDER: If you opted out of virtual environment creation or if it failed,"
+    color_yellow "ensure you have a suitable Python environment active before running the application."
+fi
+echo ""
+
+echo "After activating the virtual environment (if applicable), and ensuring you've completed"
+echo "the Hugging Face login and model license steps, you can run the application with:"
+color_yellow "  python diarize_huggingface_cli.py"
+echo ""
+
+echo "For the main application to find WhisperX correctly, ensure that the virtual environment where"
+echo "it was installed (via requirements.txt) is active."
+echo ""
+echo "Thank you for using the setup script!"
