@@ -11,7 +11,7 @@ echo This script will attempt to:
 echo   1. Check for Python.
 echo   2. Create a Python virtual environment (optional).
 echo   3. Activate the virtual environment for this script session.
-echo   4. Install required Python packages from requirements.txt.
+echo   4. Install required Python packages from requirements.txt (including WhisperX).
 echo   5. Check for FFmpeg.
 echo   6. Guide you on Hugging Face CLI login.
 echo.
@@ -123,6 +123,7 @@ if %venv_created% equ 1 (
 REM --- Section 5: Install Dependencies ---
 echo ################################################################################
 echo # Step 4: Installing Python Dependencies from requirements.txt               #
+echo # This will include WhisperX for transcription.                              #
 echo ################################################################################
 echo.
 if exist requirements.txt (
@@ -137,12 +138,14 @@ if exist requirements.txt (
         echo   - Errors in the 'requirements.txt' file.
         echo   - Python/pip setup issues.
         echo   - If you skipped virtual environment creation, ensure you are in an active one.
+        echo   - WhisperX installation (from GitHub) might have specific build dependencies.
+        echo     Please check the WhisperX GitHub page for any prerequisites if errors persist.
         echo.
         echo Please check the error messages above for more details.
         color
     ) else (
         color 0A
-        echo Python dependencies installed successfully!
+        echo Python dependencies (including WhisperX) installed successfully!
         color
     )
 ) else (
@@ -193,18 +196,23 @@ echo ###########################################################################
 echo.
 echo IMPORTANT NEXT STEPS (manual):
 echo.
-echo 1. Log in to Hugging Face using the command line:
+echo 1. Activate your virtual environment (if you created one and it is not currently active):
+echo.
+echo    venv\Scripts\activate.bat
+echo.
+echo 2. Log in to Hugging Face using the command line:
 echo.
 echo    huggingface-cli login
 echo.
 echo    You will be prompted for a User Access Token. You can create one
-echo    with 'read' permissions at: https://huggingface.co/settings/tokens
+    echo    with "read" permissions from https://huggingface.co/settings/tokens
 echo.
-echo 2. Accept Model Licenses:
-echo    After logging in, you MUST accept the user agreements for the required
-echo    models on the Hugging Face website using the SAME ACCOUNT:
-echo      - https://huggingface.co/pyannote/speaker-diarization-3.1 (Click "Access repository")
-echo      - https://huggingface.co/pyannote/segmentation-3.0 (Click "Access repository")
+echo 3. Accept Model Licenses:
+    echo.
+    echo    Using the SAME Hugging Face account you logged in with via the CLI,
+    echo    you MUST visit and accept the terms for the following models:
+    echo      - https://huggingface.co/pyannote/speaker-diarization-3.1 (Click 'Access repository')
+    echo      - https://huggingface.co/pyannote/segmentation-3.0 (Click 'Access repository')
 echo.
 echo These steps are crucial for the application to download and use the models.
 echo.
@@ -216,20 +224,26 @@ echo ###########################################################################
 echo # Setup Script Completed!                                                      #
 echo ################################################################################
 echo.
-echo This script has finished its automated tasks.
+echo The automated setup script has finished.
 echo.
-echo REMEMBER:
-echo   - Complete the Hugging Face login and accept model licenses if you haven't.
-echo   - To run the Python application (`diarize_huggingface_cli.py`),
-echo     you need to activate the virtual environment in your terminal session first:
+echo REMEMBER THE FOLLOWING MANUAL STEPS if you haven't done them yet:
+echo   - Complete the Hugging Face login ('huggingface-cli login').
+echo   - Accept the model licenses on the Hugging Face website.
 echo.
-echo       venv\Scripts\activate.bat
+echo To run the Python application ('diarize_huggingface_cli.py'),
+echo first activate the virtual environment in your terminal session (if not already active):
 echo.
-echo   - Then, run the script using:
+echo   venv\Scripts\activate.bat
 echo.
-echo       python diarize_huggingface_cli.py
+echo Then, run the script using:
+echo.
+echo   python diarize_huggingface_cli.py
+echo.
+echo For the main application to find WhisperX correctly, ensure that the virtual environment where
+echo it was installed (via requirements.txt) is active.
 echo.
 echo Refer to README.md for more details and troubleshooting.
 echo.
+echo Exiting setup script.
+echo.
 pause
-exit /b 0
