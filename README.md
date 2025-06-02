@@ -683,7 +683,7 @@ graph TD
     D --> E[Activate Virtual Environment];
     E --> F[Install Python Deps via requirements.txt includes WhisperX];
     F --> F1{Model Usage Mode?};
-    F1 -->|Online (Hugging Face)| G[Hugging Face CLI Login];
+    F1 -->|Online - Hugging Face| G[Hugging Face CLI Login];
     G --> G_Action[Run huggingface-cli login];
     G_Action --> H[Accept Model Licenses on HF Website];
     H --> H_Action[Accept Licenses];
