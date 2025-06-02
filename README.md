@@ -1,8 +1,8 @@
 # Speaker Diarization & Transcription Tool
 
-Whisper Diarize is a tool designed for speaker diarization, identifying "who spoke when" in an audio file. It primarily utilizes `pyannote.audio` (version 3.1) for diarization and performs speech transcription using WhisperX. The tool offers both a command-line interface (CLI) and a Gradio-based web UI for user interaction. It supports various audio formats, batch processing, audio trimming, and exports results in text and JSON formats. Access to Hugging Face models requires user authentication via `huggingface-cli login`.
+Whisper Diarize is a tool designed for speaker diarization, identifying "who spoke when" in an audio file. It primarily utilizes `pyannote.audio` (version 3.1) for diarization and performs speech transcription using WhisperX. The tool offers both a command-line interface (CLI) and a Gradio-based web UI for user interaction. It supports various audio formats, batch processing, audio trimming, and exports results in text and JSON formats. Access to Hugging Face models for online download requires user authentication via `huggingface-cli login`. The tool now also supports running with locally stored models for offline operation.
 
-The project aims to provide a user-friendly way to perform speaker diarization and transcription, leveraging powerful open-source models and libraries. It includes features for handling single files or batches, customizing speaker information, and managing output formats.
+The project aims to provide a user-friendly way to perform speaker diarization and transcription, leveraging powerful open-source models and libraries. It includes features for handling single files or batches, customizing speaker information, managing output formats, and options for both online and offline model usage.
 
 ## Core Functionality
 
@@ -587,11 +587,21 @@ pip3 --version     # or pip --version
     Your terminal prompt should change to indicate that the virtual environment is active (e.g., `(venv) your-prompt$`).
 
 3.  **Install dependencies:**
-    With your virtual environment active, install the required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    This will install `huggingface_hub` which provides the `huggingface-cli` tool, and `WhisperX` along with other core dependencies.
+    a. Install base dependencies:
+       ```bash
+       pip install -r requirements.txt
+       ```
+       *(Note: WhisperX has been removed from requirements.txt to facilitate offline setup of other packages. It must be installed manually as described below.)*
+
+    b. **Install WhisperX manually:**
+       WhisperX is required for transcription. Clone its repository and install it locally:
+       ```bash
+       git clone https://github.com/m-bain/whisperx.git
+       cd whisperx
+       pip install .
+       cd ..
+       ```
+       Ensure you do this in your activated virtual environment.
 
 4.  **Install FFmpeg:** This is an essential external dependency for audio processing.
     *   **macOS (using Homebrew):**
@@ -604,7 +614,12 @@ pip3 --version     # or pip --version
         ```
     *   **Windows:** Download FFmpeg builds from [ffmpeg.org](https://ffmpeg.org/download.html#build-windows) or [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases). After downloading, you'll need to add the `bin` directory (containing `ffmpeg.exe`) to your system's PATH environment variable.
 
-5.  **Hugging Face Login & Model License Agreements:**
+5.  **Model Setup: Hugging Face (Online) or Local (Offline):**
+
+    Depending on whether you want the tool to download models automatically or use pre-downloaded local models, follow the relevant subsection.
+
+    #### Using Hugging Face for Model Download (Online Operation)
+    This is the default mode where the tool fetches models from Hugging Face.
     *   **Login to Hugging Face:**
         ```bash
         huggingface-cli login
@@ -614,27 +629,73 @@ pip3 --version     # or pip --version
         *   [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (Click "Access repository")
         *   [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (Click "Access repository")
 
+    #### Using Local Models (for Offline Operation)
+    This mode allows you to run the tool without an active internet connection, provided models are downloaded beforehand.
+    *   **`pyannote.audio` models:**
+        *   You need to clone the `pyannote/speaker-diarization-3.1` model repository. The segmentation model (`pyannote/segmentation-3.0`) is typically a dependency of the diarization pipeline and will be loaded from the `speaker-diarization-3.1` local directory if structured correctly by pyannote, or you may need to ensure it's also locally available if issues arise.
+        *   Ensure `git-lfs` is installed (`git lfs install`).
+        *   Clone the main diarization model:
+            ```bash
+            # For pyannote/speaker-diarization-3.1
+            git clone https://huggingface.co/pyannote/speaker-diarization-3.1
+            cd speaker-diarization-3.1
+            git lfs pull
+            cd ..
+
+            # It's also good practice to have the segmentation model locally.
+            # pyannote usually handles finding it if speaker-diarization-3.1 is local,
+            # but if not, clone it as well:
+            git clone https://huggingface.co/pyannote/segmentation-3.0
+            cd segmentation-3.0
+            git lfs pull
+            cd ..
+            ```
+        *   You will need the local file path to the *directory* containing the `pytorch_model.bin`, `config.yaml`, etc., for `speaker-diarization-3.1` (e.g., `/path/to/your/cloned/speaker-diarization-3.1`).
+
+    *   **`WhisperX` models:**
+        *   WhisperX models (e.g., 'base', 'medium', 'large-v3') also need to be downloaded. These models are typically directories containing files like `model.bin`, `config.json`, `tokenizer.json`, and `vocabulary.json`.
+        *   Many Whisper-compatible models that work with WhisperX are available on Hugging Face. For example, to download the `faster-whisper-large-v3` model (which is compatible with WhisperX):
+            ```bash
+            # Example for faster-whisper-large-v3
+            git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3
+            cd faster-whisper-large-v3
+            # If LFS is used (check .gitattributes), you might need git lfs pull
+            # git lfs pull # Uncomment if LFS files are present
+            cd ..
+            ```
+            (Refer to WhisperX documentation or Hugging Face for other model sizes or sources like `openai/whisper-<size>` if you are using the standard Whisper portion, though WhisperX primarily uses its own converted model format like `faster-whisper`).
+        *   You will need the local file path to the *directory* containing these model files (e.g., `/path/to/your/cloned/faster-whisper-large-v3`).
+
+    *   **Configuration (Placeholder):**
+        *   Currently, these local paths for pyannote and WhisperX models need to be passed directly to the core functions (`load_pipeline`, `load_whisper_model`) in `diarize_huggingface_cli.py`.
+        *   Future updates will add UI elements and/or CLI arguments for easier configuration of these local paths.
+        *   If local paths are correctly configured and models are valid, Hugging Face login may not be required for offline operation.
+
 ### Setup and Dependency Check Flow
-This diagram illustrates the general flow of checking system requirements, either manually or via the provided installation scripts.
+This diagram illustrates the general flow of checking system requirements, including options for online and offline model setup.
 ```mermaid
 graph TD
-    A[Start Setup] --> B{Python 3.8+?}
-    B -->|No| B_Action[Install/Update Python]
-    B -->|Yes| C{FFmpeg Installed & in PATH?}
-    C -->|No| C_Action[Install FFmpeg / Add to PATH]
-    C -->|Yes| D[Create Virtual Environment]
-    D --> E[Activate Virtual Environment]
-    E --> F[Install Python Deps via requirements.txt includes WhisperX]
-    F --> G{Hugging Face CLI Login?}
-    G -->|No| G_Action[Run huggingface-cli login]
-    G -->|Yes| H{Model Licenses Accepted on HF?}
-    H -->|No| H_Action[Accept Licenses on Hugging Face Website]
-    H -->|Yes| L[Setup Complete with Transcription]
+    A[Start Setup] --> B{Python 3.8+?};
+    B -->|No| B_Action[Install/Update Python];
+    B -->|Yes| C{FFmpeg Installed & in PATH?};
+    C -->|No| C_Action[Install FFmpeg / Add to PATH];
+    C -->|Yes| D[Create Virtual Environment];
+    D --> E[Activate Virtual Environment];
+    E --> F[Install Python Deps via requirements.txt includes WhisperX];
+    F --> F1{Model Usage Mode?};
+    F1 -->|Online (Hugging Face)| G[Hugging Face CLI Login];
+    G --> G_Action[Run huggingface-cli login];
+    G_Action --> H[Accept Model Licenses on HF Website];
+    H --> H_Action[Accept Licenses];
+    H_Action --> L[Setup Complete (Online Models)];
+
+    F1 -->|Offline (Local Models)| I[Download/Locate Local Models];
+    I --> I_Action[Clone/Copy pyannote & WhisperX models];
+    I_Action --> J[Configure Local Paths in Script];
+    J --> L_Offline[Setup Complete (Offline Models)];
     
-    B_Action --> B
-    C_Action --> C
-    G_Action --> G
-    H_Action --> H
+    B_Action --> B;
+    C_Action --> C;
 ```
 
 ## 🚀 Automated Installation (Experimental)
@@ -652,7 +713,8 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Check for an existing Python installation.
     *   Offer to create a Python virtual environment (in a folder named `venv`).
     *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt` (this will include WhisperX).
+    *   Install Python dependencies from `requirements.txt`.
+    *   **Note on WhisperX**: WhisperX is NO LONGER installed by this script due to its removal from `requirements.txt`. You MUST install WhisperX manually as described in the "Project Setup (Manual)" section after running this automated script if you need transcription capabilities.
     *   Check if FFmpeg is accessible in your system's PATH and provide guidance if not.
     *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
 
@@ -671,7 +733,8 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Check for Python 3 and pip3.
     *   Offer to create a Python virtual environment (in a folder named `venv`).
     *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt` (this will include WhisperX).
+    *   Install Python dependencies from `requirements.txt`.
+    *   **Note on WhisperX**: WhisperX is NO LONGER installed by this script due to its removal from `requirements.txt`. You MUST install WhisperX manually as described in the "Project Setup (Manual)" section after running this automated script if you need transcription capabilities.
     *   Check if FFmpeg is accessible and provide OS-specific installation advice if not (Homebrew for macOS, apt for Debian/Ubuntu, etc.).
     *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
 
@@ -684,6 +747,7 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Windows (Command Prompt): `venv\Scripts\activate.bat`
     *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
     *   macOS/Linux: `source venv/bin/activate`
+*   **Offline Setup Note:** The automated installation scripts currently focus on the online setup (Hugging Face model download). For a full offline setup, you will need to manually download the models as described in the "Using Local Models (for Offline Operation)" section and configure the paths in the script if UI options are not yet available.
 
 ## Usage
 
@@ -710,7 +774,7 @@ Refer to the "Help & Documentation" section within the Gradio UI or the sections
     *   `torchaudio`: Audio library for PyTorch.
     *   `pandas`: For data manipulation.
     *   `huggingface_hub`: Provides `huggingface-cli` for authentication and model downloads, and is used by `pyannote.audio`.
-    *   `whisperx @ git+https://github.com/m-bain/whisperx.git`: For speech transcription.
+    *   WhisperX: For speech transcription. Must be installed manually from its GitHub repository (see Setup section).
 
 ### Hardware Recommendations
 
@@ -725,22 +789,25 @@ Refer to the "Help & Documentation" section within the Gradio UI or the sections
 
 ### Internet Connection
 
-*   **Required**: An active internet connection is necessary for:
-    *   Initial download of Python packages (including WhisperX from GitHub).
-    *   Downloading models from Hugging Face upon first use.
-    *   Hugging Face authentication (`huggingface-cli login`).
-*   **Not Required for Normal Operation**: Once models are downloaded and cached, the script can run offline for processing, provided no new models need to be fetched.
+*   **Required for Initial Setup**: An active internet connection is generally necessary for:
+    *   Initial download of Python packages (including WhisperX from GitHub and other dependencies from PyPI).
+    *   Downloading models from Hugging Face *if you are not using pre-downloaded local models*.
+    *   Hugging Face authentication (`huggingface-cli login`) *if you are using the online model download feature*.
+*   **Offline Operation**:
+    *   Once all Python packages are installed, and if you are using pre-downloaded local models for both `pyannote` and `WhisperX` (and have configured the tool to use them), an internet connection is **not required** for normal operation.
+    *   If using the default online model download, then once models are downloaded and cached by Hugging Face libraries, the script can often run offline for subsequent processing of the *same models*, provided no new models or remote configurations need to be fetched. However, for true, guaranteed offline use, the local model setup is recommended.
 
 ## ⚠️ Common Issues & Solutions
 
 This section provides solutions to common problems you might encounter.
 
 ### Authentication & Model Access Issues
+*(These issues are primarily relevant if you are *not* using a fully offline setup with local models, or if Hugging Face access is still attempted for any reason.)*
 
 *   **Error**: `"❌ Not logged in to Hugging Face CLI"` or `"AUTHORIZATION ERROR:"` or `"401 Unauthorized"`
     *   **Solution**:
         1.  Ensure you have run `huggingface-cli login` and entered a valid Hugging Face User Access Token with "read" permissions.
-        2.  Crucially, verify you have accepted the license agreements for **both** required models using the *same Hugging Face account* used for `huggingface-cli login`:
+        2.  Crucially, verify you have accepted the license agreements for **both** required `pyannote` models using the *same Hugging Face account* used for `huggingface-cli login`:
             *   [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1) (Click "Access repository")
             *   [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (Click "Access repository")
         3.  If issues persist, try logging in again: `huggingface-cli login`.
@@ -780,9 +847,9 @@ This section provides solutions to common problems you might encounter.
 
 *   **Error**: `"❌ Failed to load transcription model (WhisperX)."`
     *   **Solution**:
-        *   Ensure WhisperX was installed correctly via `pip install -r requirements.txt`. Check for any errors during that installation.
+        *   Ensure WhisperX was installed correctly by following the manual installation steps (cloning the repository and running `pip install .` from within its directory). Check for any errors during that installation.
         *   Check you have enough RAM/VRAM for the selected model size (see "Model Sizes" in the UI's Transcription help tab). Try a smaller model (e.g., "base" or "small").
-        *   Ensure all dependencies for WhisperX (like `faster-whisper`) were installed correctly.
+        *   Ensure all dependencies for WhisperX (like `faster-whisper`) were installed correctly. This should be handled by `pip install .` if the WhisperX `setup.py` is correctly configured.
 
 ### General Troubleshooting
 
@@ -796,6 +863,22 @@ This section provides solutions to common problems you might encounter.
 ## Contributing
 
 Contributions are welcome! Please fork the repository, create a new branch for your features or bug fixes, and submit a pull request.
+
+## Open Source and Offline Usage Considerations
+
+*   **This Tool (MIT Licensed):** The "Speaker Diarization & Transcription Tool" (this project) is open source under the MIT License. This means the code of the tool itself is freely available for you to use, modify, and distribute, subject to the terms of the MIT License.
+
+*   **Core Dependencies:** This tool integrates and relies on several powerful external libraries and pre-trained models, each with its own licensing and usage terms:
+    *   **`pyannote.audio`:** The `pyannote.audio` library and its associated pre-trained models (e.g., `pyannote/speaker-diarization-3.1`, `pyannote/segmentation-3.0`) are developed by pyannote.io. Using these models, even when downloaded for local/offline use, typically requires users to agree to specific terms and conditions on their respective Hugging Face model pages (e.g., a Creative Commons license for the model weights, or specific research/commercial use clauses).
+    *   **`WhisperX` and `Whisper` Models:**
+        *   `WhisperX` itself (the library code) is often provided under a permissive open-source license like Apache 2.0.
+        *   `WhisperX` utilizes speech recognition models based on OpenAI's `Whisper` architecture. The original `Whisper` models released by OpenAI have their own usage terms and licenses (often research-focused, with some restrictions).
+        *   The specific Whisper models used with WhisperX (whether downloaded via WhisperX's default mechanisms or provided locally) may be OpenAI's original weights, or fine-tuned/converted versions by the WhisperX authors or the community. It is crucial to check the license associated with the particular Whisper model checkpoint you are using.
+    *   **FFmpeg:** This tool uses FFmpeg for audio format conversion. FFmpeg is typically licensed under the LGPL or GPL.
+
+*   **"Offline" Capability:** The offline functionality described in this README means the tool can operate without an active internet connection *after* all necessary software components (Python, FFmpeg, this tool's code, the WhisperX library) and the required pre-trained models (`pyannote` models, `WhisperX` compatible speech recognition models) have been downloaded and correctly configured for local access. The offline mode does not alter the underlying licenses or terms of use of these components.
+
+*   **User Responsibility:** Users of this tool are responsible for understanding and adhering to the licenses and terms of use for all components they utilize. This includes the MIT license for this tool itself, the terms for `pyannote.audio` models, the licenses for the specific `WhisperX` library and `Whisper` speech recognition models employed, and the license for FFmpeg. The goal of providing offline capabilities is to offer operational flexibility, not to bypass or alter the licensing agreements of any third-party software or models.
 
 ## License
 

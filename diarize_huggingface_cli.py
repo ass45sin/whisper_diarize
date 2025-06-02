@@ -90,18 +90,40 @@ def check_hf_login():
     update_progress("Checking Hugging Face login", 0.05)
     print("🔍 Checking Hugging Face CLI login status...")
     try:
-        result = subprocess.run(
-            ["huggingface-cli", "whoami"], 
-            capture_output=True, 
-            text=True, 
-            check=True
+        # Try to get token silently first
+        token_check_process = subprocess.run(
+            ["huggingface-cli", "token"],
+            capture_output=True,
+            text=True
         )
-        username = result.stdout.strip()
-        print(f"✅ Logged in to Hugging Face as: {username}")
-        update_progress(f"Logged in as {username}", 0.1)
-        return True
+        if token_check_process.returncode == 0 and token_check_process.stdout.strip():
+            print("✅ Hugging Face token found via 'huggingface-cli token'.")
+            # Optionally, verify with whoami if a token exists
+            result = subprocess.run(
+                ["huggingface-cli", "whoami"],
+                capture_output=True,
+                text=True,
+                check=True # This will raise CalledProcessError if whoami fails despite token presence
+            )
+            username = result.stdout.strip()
+            print(f"✅ Logged in to Hugging Face as: {username}")
+            update_progress(f"Logged in as {username}", 0.1)
+            return True
+        else:
+            # If token command fails or returns no token, try whoami directly
+            # This maintains original behavior if 'huggingface-cli token' isn't robust
+            result = subprocess.run(
+                ["huggingface-cli", "whoami"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            username = result.stdout.strip()
+            print(f"✅ Logged in to Hugging Face as: {username} (verified via whoami)")
+            update_progress(f"Logged in as {username}", 0.1)
+            return True
     except subprocess.CalledProcessError:
-        print("❌ Not logged in to Hugging Face CLI")
+        print("❌ Not logged in to Hugging Face CLI or token is invalid.")
         print("\n===================================================================")
         print("Please follow these steps:")
         print("1. Visit https://huggingface.co/pyannote/speaker-diarization-3.1")
@@ -176,33 +198,58 @@ def convert_audio_to_wav(input_file, temp_dir=DEFAULT_TEMP_DIR, trim_start=None,
         update_progress(f"Error: {str(e)}", 0.15)
         return None, False
 
-def load_pipeline():
-    """Load the pyannote pipeline with CLI authentication"""
+def load_pipeline(local_model_path=None):
+    """Load the pyannote pipeline with CLI authentication or from a local path."""
     update_progress("Loading diarization model", 0.25)
-    print("🔄 Loading pyannote speaker diarization model...")
+
+    if local_model_path:
+        print(f"🔄 Attempting to load pyannote speaker diarization model from local path: {local_model_path}...")
+        try:
+            # When loading locally, use_auth_token might not be needed or should be False
+            pipeline = Pipeline.from_pretrained(local_model_path)
+            print(f"✅ Model loaded successfully from local path: {local_model_path}")
+        except Exception as e:
+            print(f"❌ Error loading model from local path {local_model_path}: {str(e)}")
+            print("Falling back to Hugging Face Hub loading...")
+            # Fallback to Hugging Face Hub if local loading fails
+            return load_pipeline_from_hf() # Call a helper or directly implement HF loading
+    else:
+        # This is the original Hugging Face Hub loading logic
+        return load_pipeline_from_hf()
+
+def load_pipeline_from_hf():
+    """Helper function to load pipeline from Hugging Face Hub."""
+    print("🔄 Loading pyannote speaker diarization model from Hugging Face Hub...")
+    if not check_hf_login(): # Check HF login only when loading from Hub
+        # The check_hf_login function itself prints detailed error messages and instructions.
+        # It also updates progress if login fails.
+        # We might want to update progress here again or ensure check_hf_login handles it.
+        update_progress("Hugging Face login required and failed", 0)
+        # Return None or raise an exception if login is mandatory for HF loading
+        # For now, let's assume load_pipeline is called where this check is critical.
+        # The main `diarize` function calls check_hf_login separately.
+        # If we reach here, it means a fallback from local tried HF, or direct HF load.
+        # If check_hf_login fails here, it's a definitive stop for HF loading.
+        return None
     try:
-        # Using latest model version with CLI authentication
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1",
-            use_auth_token=True  # This uses the CLI login token
+            use_auth_token=True # This uses the CLI login token
         )
-        
-        # Try to move to GPU if available (significantly speeds up processing)
+        # Try to move to GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if device.type == 'cuda':
             print(f"✅ Using GPU acceleration: {device}")
             pipeline.to(device)
         else:
             print("ℹ️ Running on CPU (no GPU available)")
-            
-        print("✅ Model loaded successfully!")
-        update_progress("Model loaded successfully", 0.30)
+        print("✅ Model loaded successfully from Hugging Face Hub!")
+        update_progress("Model loaded successfully from HF Hub", 0.30)
         return pipeline
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ Error loading model: {error_msg}")
-        update_progress(f"Error loading model: {error_msg[:50]}...", 0.25)
-        
+        print(f"❌ Error loading model from Hugging Face Hub: {error_msg}")
+        update_progress(f"Error loading model from HF: {error_msg[:50]}...", 0.25)
         if "401" in error_msg or "Unauthorized" in error_msg:
             print("\n===================================================================")
             print("AUTHORIZATION ERROR:")
@@ -239,49 +286,92 @@ def load_pipeline():
             print("===================================================================\n")
         return None
 
-def _try_load_whisperx(model_size):
+def _try_load_whisperx(model_name_or_path, local_path_provided=False):
     try:
         update_progress("Loading WhisperX model", 0.32)
-        print(f"🔄 Loading WhisperX {model_size} model...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
         compute_type = "float16" if torch.cuda.is_available() else "float32"
-        model = whisperx.load_model(model_size, device, compute_type=compute_type)
-        print(f"✅ WhisperX model loaded successfully on {device} using {compute_type}!")
+
+        if local_path_provided:
+            print(f"🔄 Loading WhisperX model from local path: {model_name_or_path}...")
+            # For local paths, whisperx.load_model expects the path directly.
+            # The first argument to load_model is treated as `model_name_or_path`.
+            model = whisperx.load_model(model_name_or_path, device, compute_type=compute_type)
+            print(f"✅ WhisperX model loaded successfully from local path on {device} using {compute_type}!")
+        else:
+            print(f"🔄 Loading WhisperX {model_name_or_path} model from Hugging Face/cache...")
+            model = whisperx.load_model(model_name_or_path, device, compute_type=compute_type)
+            print(f"✅ WhisperX model loaded successfully ({model_name_or_path}) on {device} using {compute_type}!")
+
         update_progress("WhisperX model loaded", 0.35)
         return model
     except Exception as e:
-        print(f"❌ Error loading WhisperX model: {str(e)}")
+        if local_path_provided:
+            print(f"❌ Error loading WhisperX model from local path {model_name_or_path}: {str(e)}")
+        else:
+            print(f"❌ Error loading WhisperX model {model_name_or_path}: {str(e)}")
         return None
 
-def _try_load_standard_whisper(model_size, is_fallback=False):
+def _try_load_standard_whisper(model_name_or_path, local_path_provided=False, is_fallback=False):
     progress_msg = "Loading Whisper model as fallback" if is_fallback else "Loading Whisper model"
     try:
         update_progress(progress_msg, 0.32)
-        print(f"🔄 Loading Whisper {model_size} model...")
-        model = whisper.load_model(model_size)
-        print("✅ Whisper model loaded successfully!")
+        if local_path_provided:
+            print(f"🔄 Loading Whisper model from local path: {model_name_or_path}...")
+            # whisper.load_model expects the path directly if it's a local file.
+            model = whisper.load_model(model_name_or_path)
+            print(f"✅ Whisper model loaded successfully from local path: {model_name_or_path}!")
+        else:
+            print(f"🔄 Loading Whisper {model_name_or_path} model from Hugging Face/cache...")
+            model = whisper.load_model(model_name_or_path)
+            print(f"✅ Whisper model loaded successfully ({model_name_or_path})!")
+
         update_progress("Whisper model loaded", 0.35)
         return model
     except Exception as e:
-        error_msg = f"❌ Error loading fallback Whisper model: {str(e)}" if is_fallback else f"❌ Error loading Whisper model: {str(e)}"
-        print(error_msg)
+        error_prefix = f"❌ Error loading fallback Whisper model" if is_fallback else f"❌ Error loading Whisper model"
+        if local_path_provided:
+            print(f"{error_prefix} from local path {model_name_or_path}: {str(e)}")
+        else:
+            print(f"{error_prefix} {model_name_or_path}: {str(e)}")
         return None
 
-def load_whisper_model(model_size="base"):
-    """Load Whisper/WhisperX model for transcription"""
+def load_whisper_model(model_size="base", local_whisper_path=None):
+    """Load Whisper/WhisperX model for transcription, from local path or by name."""
+
+    model_identifier = local_whisper_path if local_whisper_path else model_size
+    is_local = bool(local_whisper_path)
+
     if WHISPERX_AVAILABLE:
-        model = _try_load_whisperx(model_size)
+        if is_local:
+            print(f"Attempting to load WhisperX from local path: {model_identifier}")
+        else:
+            print(f"Attempting to load WhisperX model: {model_identifier}")
+        model = _try_load_whisperx(model_identifier, local_path_provided=is_local)
         if model:
             return model
-        # Fallback if WhisperX failed
-        print("⚠️ Falling back to standard Whisper due to WhisperX error")
+
+        # Fallback if WhisperX failed (either local or remote attempt)
+        warning_msg = f"⚠️ WhisperX failed to load from {'local path ' + model_identifier if is_local else model_identifier}."
+        print(warning_msg)
         if WHISPER_AVAILABLE:
-            return _try_load_standard_whisper(model_size, is_fallback=True)
-        return None # WhisperX failed, and standard Whisper not available
+            print("⚠️ Falling back to standard Whisper.")
+            # If local WhisperX path failed, we don't have a local standard Whisper path unless it's the same.
+            # For now, fallback to standard Whisper using model_size name, not the local_whisper_path.
+            # This could be refined if a user wants to provide separate local paths for X and standard.
+            return _try_load_standard_whisper(model_size, local_path_provided=False, is_fallback=True)
+        else:
+            print("⚠️ Standard Whisper is not available for fallback.")
+            return None # WhisperX failed, and standard Whisper not available for fallback
+
     elif WHISPER_AVAILABLE:
-        return _try_load_standard_whisper(model_size)
+        if is_local:
+            print(f"Attempting to load standard Whisper from local path: {model_identifier}")
+        else:
+            print(f"Attempting to load standard Whisper model: {model_identifier}")
+        return _try_load_standard_whisper(model_identifier, local_path_provided=is_local)
     
-    # Neither WhisperX nor standard Whisper is available
+    print("⚠️ Neither WhisperX nor standard Whisper is available.")
     return None
 
 def _transcribe_with_whisperx(whisper_model, audio_path, options, language, diarization, device):
@@ -644,32 +734,40 @@ def _save_all_outputs(output_path_dir, original_audio_filepath, transcript_conte
 
 # --- Helper Functions for `diarize` ---
 
-def _diarize_initial_checks_and_setup(audio_file_path, output_path_param, temp_dir_param):
+def _diarize_initial_checks_and_setup(audio_file_path, output_path_param, temp_dir_param, local_pyannote_path=None):
     """
-    Performs initial checks for audio file, Hugging Face login, pipeline loading,
+    Performs initial checks for audio file, Hugging Face login (if needed), pipeline loading,
     and sets up effective temporary and output paths.
     Returns: (pipeline_obj, effective_output_path, effective_temp_dir, error_message_str_or_None)
     """
     if audio_file_path is None:
-        logging.warning("No audio file provided for diarization.")
+        # Changed to logging standard, ensure logging is configured if used.
+        # For now, let's assume print or a UI update is more direct for this CLI tool.
+        print("Warning: No audio file provided for diarization.")
         return None, None, None, "⚠️ Please upload an audio file."
 
     effective_output_path = output_path_param if output_path_param else DEFAULT_OUTPUT_DIR
-    effective_temp_dir = temp_dir_param # temp_dir_param already defaults to DEFAULT_TEMP_DIR in `diarize` signature
+    effective_temp_dir = temp_dir_param
     
     try:
         os.makedirs(effective_temp_dir, exist_ok=True)
         os.makedirs(effective_output_path, exist_ok=True)
     except OSError as e:
-        logging.error(f"Error creating directories: {e}", exc_info=True)
+        print(f"Error creating directories: {e}") # Assuming logging might not be set up.
         return None, None, None, f"❌ Error creating directories: {e}"
 
+    # Hugging Face login check is now conditional within load_pipeline (specifically in load_pipeline_from_hf)
+    # So, we don't need a top-level unconditional check here if local_pyannote_path is provided.
+    # However, the main `diarize` function in the original code *does* call check_hf_login unconditionally.
+    # This needs to be reconciled. For now, this helper won't check if local_pyannote_path is given.
 
-    if not check_hf_login(): # Logs its own error and prints instructions
-        return None, None, None, "❌ Please login with huggingface-cli login first. See console for instructions."
+    if not local_pyannote_path: # Only check HF login if not using a local pyannote model
+        if not check_hf_login(): # Logs its own error and prints instructions
+            return None, None, None, "❌ Hugging Face login required and failed. See console for instructions."
 
-    pipeline_obj = load_pipeline() # Logs its own error and prints instructions
+    pipeline_obj = load_pipeline(local_model_path=local_pyannote_path)
     if pipeline_obj is None:
+        # load_pipeline (and its helper) should have printed detailed errors.
         return None, None, None, "❌ Failed to load the diarization model. See console for details."
     
     return pipeline_obj, effective_output_path, effective_temp_dir, None # Success
@@ -684,7 +782,9 @@ def _diarize_transcription_step(
     if not transcribe_flag or not (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
         return None, None, None # No transcription requested or no Whisper available
 
-    whisper_model = load_whisper_model(whisper_model_size_param)
+    # Placeholder for local_whisper_path, to be added to load_whisper_model call
+    local_whisper_path_param = None # This will be passed from `diarize` eventually
+    whisper_model = load_whisper_model(model_size=whisper_model_size_param, local_whisper_path=local_whisper_path_param)
     if whisper_model is None:
         # Error message already logged by load_whisper_model.
         # Cleanup the temporary WAV file if it was created for this transcription attempt.
@@ -709,7 +809,8 @@ def _diarize_transcription_step(
 def diarize(audio_file, output_path, known_speakers, 
             temp_dir=DEFAULT_TEMP_DIR, trim_start=None, trim_end=None, 
             transcribe=False, whisper_model_size="base", language=None,
-            export_json=False):
+            export_json=False,
+            local_pyannote_path=None, local_whisper_path=None): # Added new params
     """Perform speaker diarization on an audio file"""
     update_progress("Starting", 0.0)
     start_time = time.time()
@@ -717,24 +818,19 @@ def diarize(audio_file, output_path, known_speakers,
     if audio_file is None:
         return "⚠️ Please upload an audio file.", None
 
-    # Ensure output_path is set (it's used by _save_all_outputs)
-    # The original code for output_path creation:
-    # if output_path:
-    #     os.makedirs(output_path, exist_ok=True)
-    # else:
-    #     output_path = DEFAULT_OUTPUT_DIR
-    #     os.makedirs(output_path, exist_ok=True)
-    # This logic needs to be before _save_all_outputs might be called,
-    # but _save_all_outputs is only called if this output_path is valid.
-    # Let's ensure it's created early.
     current_output_path = output_path if output_path else DEFAULT_OUTPUT_DIR
     os.makedirs(temp_dir, exist_ok=True)
-    os.makedirs(current_output_path, exist_ok=True) # Use current_output_path here
+    os.makedirs(current_output_path, exist_ok=True)
 
-    if not check_hf_login():
-        return "❌ Please login with huggingface-cli login first", None
+    # Conditional Hugging Face login check
+    # If a local pyannote model path is provided, we might not need to log in to HF.
+    if not local_pyannote_path:
+        if not check_hf_login():
+            return "❌ Please login with huggingface-cli login first (needed for pyannote model download).", None
+    else:
+        print("ℹ️ Attempting to use local pyannote model, skipping Hugging Face login check for pyannote.")
 
-    pipeline = load_pipeline()
+    pipeline = load_pipeline(local_model_path=local_pyannote_path) # Pass local path
     if pipeline is None:
         return "❌ Failed to load the diarization model. See console for details.", None
 
@@ -755,12 +851,14 @@ def diarize(audio_file, output_path, known_speakers,
     raw_whisper_result = None
     combined_std_whisper_lines = None
     if transcribe and (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
-        whisper_model = load_whisper_model(whisper_model_size)
+        # Pass local_whisper_path to load_whisper_model
+        whisper_model = load_whisper_model(model_size=whisper_model_size, local_whisper_path=local_whisper_path)
         if whisper_model is None:
             if wav_file and wav_file != audio_file: os.remove(wav_file)
             return "❌ Failed to load transcription model. See console for details.", None
         
         diar_for_transcribe = diarization if WHISPERX_AVAILABLE else None
+        # transcribe_audio will use the loaded whisper_model, which now respects local_whisper_path
         raw_whisper_result = transcribe_audio(whisper_model, wav_file, language, diar_for_transcribe)
         
         if raw_whisper_result and not WHISPERX_AVAILABLE:
@@ -811,14 +909,14 @@ def diarize(audio_file, output_path, known_speakers,
 
 def batch_diarize(input_folder, output_path, known_speakers, 
                  temp_dir=DEFAULT_TEMP_DIR, transcribe=False, whisper_model_size="base", language=None,
-                 export_json=False):
+                 export_json=False,
+                 local_pyannote_path=None, local_whisper_path=None): # Added new params
     """Process multiple audio files in a folder"""
     update_progress("Starting batch processing", 0.0)
     
     if not os.path.isdir(input_folder):
         return "⚠️ Input folder does not exist or is not a directory.", None
     
-    # Find all audio files in the input folder
     audio_extensions = ['.wav', '.mp3', '.m4a', '.flac', '.ogg', '.aac']
     audio_files = []
     for ext in audio_extensions:
@@ -827,22 +925,24 @@ def batch_diarize(input_folder, output_path, known_speakers,
     if not audio_files:
         return f"⚠️ No audio files found in {input_folder} with extensions {', '.join(audio_extensions)}", None
     
-    # Create output folder if it doesn't exist
     os.makedirs(output_path, exist_ok=True)
     
-    # Check login once for all files
-    if not check_hf_login():
-        return "❌ Please login with huggingface-cli login first", None
-    
-    # Load models once for all files
-    pipeline = load_pipeline()
+    # Conditional Hugging Face login check for pyannote model
+    if not local_pyannote_path:
+        if not check_hf_login():
+            return "❌ Please login with huggingface-cli login first (needed for pyannote model download).", None
+    else:
+        print("ℹ️ Attempting to use local pyannote model for batch processing, skipping Hugging Face login check for pyannote.")
+
+    # Load models once for all files, respecting local paths
+    pipeline = load_pipeline(local_model_path=local_pyannote_path)
     if pipeline is None:
         return "❌ Failed to load diarization model", None
     
     whisper_model = None
     if transcribe and (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
-        whisper_model = load_whisper_model(whisper_model_size)
-        if whisper_model is None and transcribe:
+        whisper_model = load_whisper_model(model_size=whisper_model_size, local_whisper_path=local_whisper_path)
+        if whisper_model is None and transcribe: # transcribe flag is still relevant here
             return "❌ Failed to load transcription model", None
     
     # Process each file
@@ -992,6 +1092,14 @@ def create_interface():
                             trim_start = gr.Number(label="Trim start (seconds)", value=None, info="Start time for audio trimming (optional)")
                             trim_end = gr.Number(label="Trim end (seconds)", value=None, info="End time for audio trimming (optional)")
                         
+                        with gr.Accordion("Offline Model Paths (Optional)", open=False):
+                            local_pyannote_model_path = gr.Textbox(label="Local Pyannote Model Path", value=None,
+                                                                  info="Path to local pyannote/speaker-diarization-3.1 directory.",
+                                                                  interactive=True) # Set to True if you want to test input
+                            local_whisper_model_path = gr.Textbox(label="Local Whisper/WhisperX Model Path", value=None,
+                                                                 info="Path to local Whisper/WhisperX model directory.",
+                                                                 interactive=True) # Set to True if you want to test input
+
                         # Whisper settings
                         with gr.Row():
                             whisper_model_size = gr.Radio(
@@ -1033,6 +1141,14 @@ def create_interface():
                 with gr.Accordion("Advanced Batch Settings", open=False):
                     batch_temp_dir = gr.Textbox(label="Temporary folder", value=DEFAULT_TEMP_DIR, info="Where to store temporary files")
                     
+                    with gr.Accordion("Offline Model Paths (Batch - Optional)", open=False):
+                        batch_local_pyannote_model_path = gr.Textbox(label="Local Pyannote Model Path (Batch)", value=None,
+                                                                      info="Path to local pyannote/speaker-diarization-3.1 directory for batch.",
+                                                                      interactive=True)
+                        batch_local_whisper_model_path = gr.Textbox(label="Local Whisper/WhisperX Model Path (Batch)", value=None,
+                                                                    info="Path to local Whisper/WhisperX model directory for batch.",
+                                                                    interactive=True)
+
                     # Whisper settings for batch
                     with gr.Row():
                         batch_whisper_model_size = gr.Radio(
@@ -1080,38 +1196,50 @@ def create_interface():
             return "⚠️ Operation cancelled by user", None
 
         # Process either single file or batch depending on active tab
-        def process_audio(mode, audio_file_in, output_path_in, include_speaker_labels_in, known_speakers_in, 
-                         temp_dir_in, trim_start_in, trim_end_in, transcribe_in, whisper_model_size_in, language_in, export_json_in,
+        def process_audio(mode,
+                         # Single file inputs
+                         audio_file_in, output_path_in, include_speaker_labels_in, known_speakers_in,
+                         temp_dir_in, trim_start_in, trim_end_in,
+                         local_pyannote_path_single_in, local_whisper_path_single_in, # New single file local paths
+                         transcribe_in, whisper_model_size_in, language_in, export_json_in,
+                         # Batch inputs
                          input_folder_in, batch_output_path_in, batch_include_speaker_labels_in, batch_known_speakers_in,
-                         batch_temp_dir_in, batch_transcribe_in, batch_whisper_model_size_in, batch_language_in, batch_export_json_in):
+                         batch_temp_dir_in,
+                         batch_local_pyannote_path_batch_in, batch_local_whisper_path_batch_in, # New batch local paths
+                         batch_transcribe_in, batch_whisper_model_size_in, batch_language_in, batch_export_json_in
+                         ):
             
-            # Map language display names to Whisper codes
-            # Default to None (auto-detect) if the key isn't in the map, or if language_in is already None/empty.
-            # The .get method with a default handles cases where language_in might be something unexpected,
-            # though the dropdown restricts choices.
             mapped_language_single = LANGUAGE_NAME_TO_CODE_MAP.get(language_in, None)
             mapped_language_batch = LANGUAGE_NAME_TO_CODE_MAP.get(batch_language_in, None)
 
-            if mode == "Single File":  # Single file mode
-                # Note: include_speaker_labels_in is not used by diarize function
+            if mode == "Single File":
                 return diarize(audio_file_in, output_path_in, known_speakers_in, 
                              temp_dir_in, trim_start_in, trim_end_in, 
-                             transcribe_in, whisper_model_size_in, mapped_language_single, export_json_in)
+                             transcribe_in, whisper_model_size_in, mapped_language_single, export_json_in,
+                             local_pyannote_path=local_pyannote_path_single_in,
+                             local_whisper_path=local_whisper_path_single_in)
             else:  # Batch mode
-                # Note: batch_include_speaker_labels_in is not used by batch_diarize function
                 return batch_diarize(input_folder_in, batch_output_path_in, batch_known_speakers_in,
                                     batch_temp_dir_in, batch_transcribe_in, 
-                                    batch_whisper_model_size_in, mapped_language_batch, batch_export_json_in)
+                                    batch_whisper_model_size_in, mapped_language_batch, batch_export_json_in,
+                                    local_pyannote_path=batch_local_pyannote_path_batch_in,
+                                    local_whisper_path=batch_local_whisper_path_batch_in)
 
         # Set up callbacks
         run_btn.click(
             process_audio,
             inputs=[
                 processing_mode,
+                # Single file inputs
                 audio_file, output_path, include_speaker_labels, known_speakers, 
-                temp_dir, trim_start, trim_end, transcribe, whisper_model_size, language, export_json,
+                temp_dir, trim_start, trim_end,
+                local_pyannote_model_path, local_whisper_model_path, # New UI components for single file
+                transcribe, whisper_model_size, language, export_json,
+                # Batch file inputs
                 input_folder, batch_output_path, batch_include_speaker_labels, batch_known_speakers,
-                batch_temp_dir, batch_transcribe, batch_whisper_model_size, batch_language, batch_export_json
+                batch_temp_dir,
+                batch_local_pyannote_model_path, batch_local_whisper_model_path, # New UI components for batch
+                batch_transcribe, batch_whisper_model_size, batch_language, batch_export_json
             ],
             outputs=[output_text, output_file]
         )
@@ -1243,13 +1371,19 @@ def create_interface():
                     - Whisper: {"Available ✅" if WHISPER_AVAILABLE else "Not Available ❌"} (Fallback)
                     
                     #### Installation
-                    If transcription is not available, install WhisperX (recommended):
+                    If transcription is not available, install WhisperX (recommended). It needs to be installed manually:
+                    ```bash
+                    # Clone the WhisperX repository
+                    git clone https://github.com/m-bain/whisperx.git
+                    cd whisperx
+                    # Install WhisperX from the local clone
+                    pip install .
+                    cd ..
                     ```
-                    pip install git+https://github.com/m-bain/whisperx.git
-                    ```
+                    Ensure this is done within your activated virtual environment.
                     
-                    Or standard Whisper:
-                    ```
+                    Or standard Whisper (if WhisperX fails or for comparison, though WhisperX is preferred):
+                    ```bash
                     pip install openai-whisper
                     ```
                     

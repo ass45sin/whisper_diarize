@@ -6,4 +6,4 @@ pandas
 # For Hugging Face model access (CLI tool, used by pyannote.audio and for login):
 huggingface_hub # Provides huggingface-cli and used by pyannote.audio
 # For Transcription:
-whisperx @ git+https://github.com/m-bain/whisperx.git
+# whisperx is now installed manually, see README.md

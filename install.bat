@@ -11,9 +11,10 @@ echo This script will attempt to:
 echo   1. Check for Python.
 echo   2. Create a Python virtual environment (optional).
 echo   3. Activate the virtual environment for this script session.
-echo   4. Install required Python packages from requirements.txt.
+echo   4. Install required Python packages from requirements.txt (excluding WhisperX).
 echo   5. Check for FFmpeg.
 echo   6. Guide you on Hugging Face CLI login.
+echo   7. Guide you on the manual installation of WhisperX.
 echo.
 echo Please ensure you have an active internet connection for downloading packages.
 echo.
@@ -152,6 +153,17 @@ if exist requirements.txt (
     color
 )
 echo.
+
+echo ################################################################################
+echo # IMPORTANT: Manual Installation of WhisperX Required                        #
+echo ################################################################################
+echo.
+echo This script does NOT install WhisperX automatically.
+echo WhisperX is required for transcription and must be installed manually.
+echo Please refer to the 'Project Setup (Manual)' section in README.md
+echo for instructions on cloning the WhisperX repository and installing it
+echo using 'pip install .' from within its directory.
+echo.
 pause
 cls
 
@@ -220,6 +232,7 @@ echo This script has finished its automated tasks.
 echo.
 echo REMEMBER:
 echo   - Complete the Hugging Face login and accept model licenses if you haven't.
+echo   - Manually install WhisperX as per README.md instructions.
 echo   - To run the Python application (`diarize_huggingface_cli.py`),
 echo     you need to activate the virtual environment in your terminal session first:
 echo.
