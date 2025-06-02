@@ -687,12 +687,12 @@ graph TD
     G --> G_Action[Run huggingface-cli login];
     G_Action --> H[Accept Model Licenses on HF Website];
     H --> H_Action[Accept Licenses];
-    H_Action --> L[Setup Complete (Online Models)];
+    H_Action --> L[Setup Complete - Online Models];
 
-    F1 -->|Offline (Local Models)| I[Download/Locate Local Models];
+    F1 -->|Offline - Local Models | I[Download/Locate Local Models];
     I --> I_Action[Clone/Copy pyannote & WhisperX models];
     I_Action --> J[Configure Local Paths in Script];
-    J --> L_Offline[Setup Complete (Offline Models)];
+    J --> L_Offline[Setup Complete - Offline Models ];
     
     B_Action --> B;
     C_Action --> C;
