@@ -1,5 +1,5 @@
 gradio
-pyannote.audio
+pyannote.audio>=3.3.2
 torch
 torchaudio
 pandas
