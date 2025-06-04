@@ -210,6 +210,37 @@ echo.
 pause
 cls
 
+REM --- Section 7: Download Models for Offline Use (Optional) ---
+echo ###########################################################################
+echo # Step 7: Download default models for offline use (optional)
+echo ###########################################################################
+echo.
+set /p dl_models="Do you want to download the default pyannote and WhisperX models (~7+ GB)? (Y/N): "
+if /I not "%dl_models%"=="N" (
+    set MODEL_DIR=models
+    if not exist %MODEL_DIR% mkdir %MODEL_DIR%
+    git lfs install
+    echo Cloning pyannote/speaker-diarization-3.1...
+    git clone https://huggingface.co/pyannote/speaker-diarization-3.1 %MODEL_DIR%\speaker-diarization-3.1
+    pushd %MODEL_DIR%\speaker-diarization-3.1
+    git lfs pull
+    popd
+    echo Cloning pyannote/segmentation-3.0...
+    git clone https://huggingface.co/pyannote/segmentation-3.0 %MODEL_DIR%\segmentation-3.0
+    pushd %MODEL_DIR%\segmentation-3.0
+    git lfs pull
+    popd
+    echo Cloning WhisperX model (faster-whisper-large-v3)...
+    git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3 %MODEL_DIR%\faster-whisper-large-v3
+    pushd %MODEL_DIR%\faster-whisper-large-v3
+    git lfs pull
+    popd
+) else (
+    echo Skipping model download.
+)
+pause
+cls
+
 REM --- Section 8: Completion Message ---
 echo ################################################################################
 echo # Setup Script Completed!                                                      #
