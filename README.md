@@ -1,6 +1,6 @@
 # Speaker Diarization & Transcription Tool
 
-Whisper Diarize is a tool designed for speaker diarization, identifying "who spoke when" in an audio file. It primarily utilizes `pyannote.audio` (version 3.1) for diarization and performs speech transcription using WhisperX. The tool offers both a command-line interface (CLI) and a Gradio-based web UI for user interaction. It supports various audio formats, batch processing, audio trimming, and exports results in text and JSON formats. Access to Hugging Face models for online download requires user authentication via `huggingface-cli login`. The tool now also supports running with locally stored models for offline operation.
+Whisper Diarize is a tool designed for speaker diarization, identifying "who spoke when" in an audio file. It primarily utilizes `pyannote.audio` (version 3.3 or newer) for diarization and performs speech transcription using WhisperX. The tool offers both a command-line interface (CLI) and a Gradio-based web UI for user interaction. It supports various audio formats, batch processing, audio trimming, and exports results in text and JSON formats. Access to Hugging Face models for online download requires user authentication via `huggingface-cli login`. The tool now also supports running with locally stored models for offline operation.
 
 The project aims to provide a user-friendly way to perform speaker diarization and transcription, leveraging powerful open-source models and libraries. It includes features for handling single files or batches, customizing speaker information, managing output formats, and options for both online and offline model usage.
 
@@ -793,7 +793,7 @@ Refer to the "Help & Documentation" section within the Gradio UI or the sections
 *   **FFmpeg**: Required for audio processing and conversion. Must be installed and accessible in your system's PATH.
 *   **Python Libraries** (installed via `pip install -r requirements.txt`):
     *   `gradio`: For the web user interface.
-    *   `pyannote.audio` (typically version 3.1 or as specified in `requirements.txt`): Core library for speaker diarization.
+    *   `pyannote.audio` (version 3.3.2 or newer, as specified in `requirements.txt`): Core library for speaker diarization.
     *   `torch` (PyTorch, >= 1.12.0 recommended): Deep learning framework used by `pyannote.audio` and `WhisperX`.
     *   `torchaudio`: Audio library for PyTorch.
     *   `pandas`: For data manipulation.
