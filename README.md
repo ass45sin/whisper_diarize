@@ -97,7 +97,9 @@ Follow these steps for a minimal working setup:
    ```bash
    python diarize_huggingface_cli.py
    ```
-   This opens a Gradio web interface in your browser.
+   This starts a Gradio web interface accessible from other devices on your
+   network at `http://<your-ip>:7860`. To restrict it to the local machine,
+   run `python diarize_huggingface_cli.py --host 127.0.0.1`.
 
 3. **Upload audio and run diarization.** Adjust options as desired and click
    **Run Diarization**. Results can be saved as text and JSON files.
@@ -770,7 +772,8 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Windows (Command Prompt): `venv\Scripts\activate.bat`
     *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
     *   macOS/Linux: `source venv/bin/activate`
-*   **Offline Setup Option:** The installation scripts can now download the default `pyannote` and `WhisperX` models for you. This requires that you log in to Hugging Face and have accepted the model licenses. When completed, you'll have all dependencies locally for offline use.
+This launches a Gradio web interface on `0.0.0.0:7860`. If you prefer to keep
+it accessible only on your machine, pass `--host 127.0.0.1`.
 
 ## Usage
 

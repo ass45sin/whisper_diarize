@@ -23,6 +23,7 @@ import glob
 import json
 from pathlib import Path
 import pandas as pd
+import argparse
 
 # Check for WhisperX availability (required for transcription)
 WHISPERX_AVAILABLE = False
@@ -1446,11 +1447,17 @@ if __name__ == "__main__":
     os.makedirs(DEFAULT_TEMP_DIR, exist_ok=True)
     os.makedirs(DEFAULT_OUTPUT_DIR, exist_ok=True)
     
+    # Parse command line arguments for host and port
+    parser = argparse.ArgumentParser(description="Speaker Diarization & Transcription Tool")
+    parser.add_argument("--host", default="0.0.0.0", help="Host/IP for the web UI (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=7860, help="Port for the web UI (default: 7860)")
+    args = parser.parse_args()
+
     # Check login status on startup
     update_progress("Starting application", 0.0)
     check_hf_login()
     print("🚀 Launching Gradio interface...")
-    
+
     # Create and launch the interface
     demo = create_interface()
-    demo.launch() 
+    demo.launch(server_name=args.host, server_port=args.port)
