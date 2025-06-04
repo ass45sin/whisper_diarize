@@ -770,7 +770,7 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Windows (Command Prompt): `venv\Scripts\activate.bat`
     *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
     *   macOS/Linux: `source venv/bin/activate`
-*   **Offline Setup Option:** The installation scripts can download the `pyannote` models and a WhisperX speech-recognition model for you. The script will ask for the Hugging Face repository to clone (it defaults to `guillaumekln/faster-whisper-large-v3`). You must log in to Hugging Face and accept the model licenses. When finished, you'll have all dependencies locally for offline use.
+*   **Offline Setup Option:** The installation scripts can now download the default `pyannote` and `WhisperX` models for you. This requires that you log in to Hugging Face and have accepted the model licenses. When completed, you'll have all dependencies locally for offline use.
 
 ## Usage
 

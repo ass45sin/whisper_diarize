@@ -254,15 +254,6 @@ echo "##########################################################################
 echo "" 
 read -p "Do you want to download the default pyannote and WhisperX models (~7+ GB)? (Y/n): " download_models
 if [[ ! "$download_models" =~ ^[Nn]$ ]]; then
-    # Verify Hugging Face CLI login before attempting to clone
-    if ! huggingface-cli whoami &> /dev/null; then
-        color_red "ERROR: You are not logged in to Hugging Face CLI."
-        echo "Please run 'huggingface-cli login' in a separate terminal and ensure"
-        echo "you have accepted the model licenses before running this step again."
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-
     MODEL_DIR="models"
     mkdir -p "$MODEL_DIR"
     git lfs install
@@ -272,12 +263,9 @@ if [[ ! "$download_models" =~ ^[Nn]$ ]]; then
     echo "Cloning pyannote/segmentation-3.0..."
     git clone https://huggingface.co/pyannote/segmentation-3.0 "$MODEL_DIR/segmentation-3.0"
     (cd "$MODEL_DIR/segmentation-3.0" && git lfs pull)
-    read -p "Enter the Hugging Face repo for the WhisperX model [guillaumekln/faster-whisper-large-v3]: " WHISPER_REPO
-    WHISPER_REPO=${WHISPER_REPO:-guillaumekln/faster-whisper-large-v3}
-    WHISPER_DIR=$(basename "$WHISPER_REPO")
-    echo "Cloning WhisperX model ($WHISPER_REPO)..."
-    git clone "https://huggingface.co/$WHISPER_REPO" "$MODEL_DIR/$WHISPER_DIR"
-    (cd "$MODEL_DIR/$WHISPER_DIR" && git lfs pull)
+    echo "Cloning WhisperX model (faster-whisper-large-v3)..."
+    git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3 "$MODEL_DIR/faster-whisper-large-v3"
+    (cd "$MODEL_DIR/faster-whisper-large-v3" && git lfs pull)
 else
     echo "Skipping model download."
 fi

@@ -230,13 +230,9 @@ if /I not "%dl_models%"=="N" (
     pushd %MODEL_DIR%\segmentation-3.0
     git lfs pull
     popd
-    set "WHISPER_REPO=guillaumekln/faster-whisper-large-v3"
-    set /p WHISPER_REPO=Enter the Hugging Face repo for the WhisperX model [%WHISPER_REPO%]: 
-    if "%WHISPER_REPO%"=="" set "WHISPER_REPO=guillaumekln/faster-whisper-large-v3"
-    for /f "tokens=2 delims=/" %%I in ("%WHISPER_REPO%") do set "WHISPER_DIR=%%I"
-    echo Cloning WhisperX model (%WHISPER_REPO%)...
-    git clone https://huggingface.co/%WHISPER_REPO% %MODEL_DIR%\%WHISPER_DIR%
-    pushd %MODEL_DIR%\%WHISPER_DIR%
+    echo Cloning WhisperX model (faster-whisper-large-v3)...
+    git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3 %MODEL_DIR%\faster-whisper-large-v3
+    pushd %MODEL_DIR%\faster-whisper-large-v3
     git lfs pull
     popd
 ) else (
