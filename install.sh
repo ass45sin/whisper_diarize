@@ -242,8 +242,33 @@ echo "   for the required models on the Hugging Face website:"
 echo "     - https://huggingface.co/pyannote/speaker-diarization-3.1 (Click 'Access repository')"
 echo "     - https://huggingface.co/pyannote/segmentation-3.0 (Click 'Access repository')"
 echo ""
-echo "These steps are crucial for the application to download and use the models."
-echo ""
+echo "These steps are crucial for the application to download and use the models." 
+echo "" 
+read -p "Press Enter to continue..." 
+clear 
+
+# --- Section 7: Download Models for Offline Use (Optional) ---
+echo "##########################################################################" 
+echo "# Step 7: Download default models for offline use (optional)" 
+echo "##########################################################################" 
+echo "" 
+read -p "Do you want to download the default pyannote and WhisperX models (~7+ GB)? (Y/n): " download_models
+if [[ ! "$download_models" =~ ^[Nn]$ ]]; then
+    MODEL_DIR="models"
+    mkdir -p "$MODEL_DIR"
+    git lfs install
+    echo "Cloning pyannote/speaker-diarization-3.1..."
+    git clone https://huggingface.co/pyannote/speaker-diarization-3.1 "$MODEL_DIR/speaker-diarization-3.1"
+    (cd "$MODEL_DIR/speaker-diarization-3.1" && git lfs pull)
+    echo "Cloning pyannote/segmentation-3.0..."
+    git clone https://huggingface.co/pyannote/segmentation-3.0 "$MODEL_DIR/segmentation-3.0"
+    (cd "$MODEL_DIR/segmentation-3.0" && git lfs pull)
+    echo "Cloning WhisperX model (faster-whisper-large-v3)..."
+    git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3 "$MODEL_DIR/faster-whisper-large-v3"
+    (cd "$MODEL_DIR/faster-whisper-large-v3" && git lfs pull)
+else
+    echo "Skipping model download."
+fi
 read -p "Press Enter to continue..."
 clear
 

@@ -619,7 +619,7 @@ pip3 --version     # or pip --version
         *   [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0) (Click "Access repository")
 
     #### Using Local Models (for Offline Operation)
-    This mode allows you to run the tool without an active internet connection, provided models are downloaded beforehand.
+    This mode allows you to run the tool without an active internet connection, provided models are downloaded beforehand. You can clone the models manually as shown below, or simply choose the download option when running `install.sh` or `install.bat`.
     *   **`pyannote.audio` models:**
         *   You need to clone the `pyannote/speaker-diarization-3.1` model repository. The segmentation model (`pyannote/segmentation-3.0`) is typically a dependency of the diarization pipeline and will be loaded from the `speaker-diarization-3.1` local directory if structured correctly by pyannote, or you may need to ensure it's also locally available if issues arise.
         *   Ensure `git-lfs` is installed (`git lfs install`).
@@ -655,10 +655,9 @@ pip3 --version     # or pip --version
             (Refer to WhisperX documentation or Hugging Face for other model sizes or sources like `openai/whisper-<size>` if you are using the standard Whisper portion, though WhisperX primarily uses its own converted model format like `faster-whisper`).
         *   You will need the local file path to the *directory* containing these model files (e.g., `/path/to/your/cloned/faster-whisper-large-v3`).
 
-    *   **Configuration (Placeholder):**
-        *   Currently, these local paths for pyannote and WhisperX models need to be passed directly to the core functions (`load_pipeline`, `load_whisper_model`) in `diarize_huggingface_cli.py`.
-        *   Future updates will add UI elements and/or CLI arguments for easier configuration of these local paths.
-        *   If local paths are correctly configured and models are valid, Hugging Face login may not be required for offline operation.
+    *   **Configuration:**
+        *   Provide the paths to these local model folders using the **"Local Pyannote Model Path"** and **"Local Whisper Model Path"** fields in the Gradio interface (or the equivalent CLI options).
+        *   If valid local paths are supplied, the tool loads the models directly from disk and Hugging Face login is not required.
 
 ### Setup and Dependency Check Flow
 This diagram illustrates the general flow of checking system requirements, including options for online and offline model setup.
@@ -734,7 +733,7 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Windows (Command Prompt): `venv\Scripts\activate.bat`
     *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
     *   macOS/Linux: `source venv/bin/activate`
-*   **Offline Setup Note:** The automated installation scripts currently focus on the online setup (Hugging Face model download). For a full offline setup, you will need to manually download the models as described in the "Using Local Models (for Offline Operation)" section and configure the paths in the script if UI options are not yet available.
+*   **Offline Setup Option:** The installation scripts can now download the default `pyannote` and `WhisperX` models for you. This requires that you log in to Hugging Face and have accepted the model licenses. When completed, you'll have all dependencies locally for offline use.
 
 ## Usage
 
