@@ -1,7 +1,7 @@
 # Security Policy
 
 ## Reporting a Vulnerability
-If you discover a security vulnerability, please do so via the GitHub Private Security Reports with a detailed description. Do **not** create public GitHub issues for security-related problems.
+If you discover a security vulnerability, please do so via the GitHub Private Security Reports (top right botton, if you see this readme directly from github.com) with a detailed description. Do **not** create public GitHub issues for security-related problems.
 
 ## Response Times
 We aim to acknowledge your report within **5 business days**. A more detailed update or request for additional information should arrive within **one week**. Complex issues may require more time to resolve, but we will keep you informed of our progress.
