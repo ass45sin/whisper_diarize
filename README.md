@@ -680,17 +680,15 @@ pip3 --version     # or pip --version
         *   You will need the local file path to the *directory* containing the `pytorch_model.bin`, `config.yaml`, etc., for `speaker-diarization-3.1` (e.g., `/path/to/your/cloned/speaker-diarization-3.1`).
 
     *   **`WhisperX` models:**
-        *   WhisperX models (e.g., 'base', 'medium', 'large-v3') also need to be downloaded. These models are typically directories containing files like `model.bin`, `config.json`, `tokenizer.json`, and `vocabulary.json`.
-        *   Many Whisper-compatible models that work with WhisperX are available on Hugging Face. For example, to download the `faster-whisper-large-v3` model (which is compatible with WhisperX):
+        *   WhisperX models (e.g., "base", "medium", "large-v3") also need to be downloaded. These models are typically directories containing files like `model.bin`, `config.json`, `tokenizer.json`, and `vocabulary.json`.
+        *   Many Whisper-compatible models that work with WhisperX are available on Hugging Face. The installation scripts will prompt you for the repository to clone; by default they suggest `guillaumekln/faster-whisper-large-v3`. To clone this default model manually you could run:
             ```bash
-            # Example for faster-whisper-large-v3
             git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3
             cd faster-whisper-large-v3
-            # If LFS is used (check .gitattributes), you might need git lfs pull
-            # git lfs pull # Uncomment if LFS files are present
+            git lfs pull
             cd ..
             ```
-            (Refer to WhisperX documentation or Hugging Face for other model sizes or sources like `openai/whisper-<size>` if you are using the standard Whisper portion, though WhisperX primarily uses its own converted model format like `faster-whisper`).
+            Replace the repository name if you wish to use a different WhisperX-compatible model. (Refer to WhisperX documentation or Hugging Face for other model sizes or sources like `openai/whisper-<size>`.)
         *   You will need the local file path to the *directory* containing these model files (e.g., `/path/to/your/cloned/faster-whisper-large-v3`).
 
     *   **Configuration:**
@@ -767,6 +765,7 @@ For convenience, platform-specific installation scripts are provided to automate
 *   **Review Scripts:** These scripts automate the manual setup steps. You can review the content of `install.bat` or `install.sh` in a text editor to understand the commands they execute.
 *   **FFmpeg Installation:** While the scripts check for FFmpeg and provide common installation commands, you might need to perform additional manual steps depending on your specific OS distribution or if you choose a manual FFmpeg installation. Ensuring FFmpeg is correctly added to your system's PATH is crucial.
 *   **Hugging Face Authentication:** The scripts will guide you, but the `huggingface-cli login` process and accepting model licenses on the Hugging Face website are interactive steps you must complete carefully using your Hugging Face account.
+*   **Login Verification:** The installer now checks that you are logged in to Hugging Face before downloading models. If not logged in, it instructs you to run `huggingface-cli login` and exits.
 *   **Virtual Environment Activation:** After the installation script completes, you **must manually activate the virtual environment** in your terminal session before running the main Python application.
     *   Windows (Command Prompt): `venv\Scripts\activate.bat`
     *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
