@@ -66,6 +66,44 @@ def transcribe_audio(whisper_model, audio_path, language=None, diarization=None)
 | Progress Tracking       | Real-time progress updates for long operations.                             | Yes              |
 | GPU Acceleration        | Automatically uses GPU if available (PyTorch & CUDA).                       | Yes (Implicit)   |
 
+## Repository Overview
+
+This repository consists of a handful of files to keep things simple:
+
+* **`diarize_huggingface_cli.py`** – main Python script providing the command-line interface and Gradio web UI. It handles model loading, audio conversion and output formatting.
+* **`install.sh`** and **`install.bat`** – optional helper scripts for Unix and Windows that set up a virtual environment, install dependencies (including WhisperX) and ensure FFmpeg is available.
+* **`requirements.txt`** – list of Python packages required to run the tool.
+* **`LICENSE`** – MIT license for this project.
+* **`README.md`** – this documentation file.
+
+If you are new to the codebase, start by running the main script, then explore the installation helpers to see how the environment is configured. The
+`pyannote.audio` and `WhisperX` documentation are helpful next reads if you
+want to understand how the underlying models work or swap them for other
+variants.
+
+## Quick Start
+
+Follow these steps for a minimal working setup:
+
+1. **Clone and install dependencies:**
+   ```bash
+   git clone https://github.com/ass45sin/whisper_diarize.git
+   cd whisper_diarize
+   pip install -r requirements.txt
+   ```
+   *(You can also run `install.sh` or `install.bat` for a guided installation.)*
+
+2. **Launch the app:**
+   ```bash
+   python diarize_huggingface_cli.py
+   ```
+   This opens a Gradio web interface in your browser.
+
+3. **Upload audio and run diarization.** Adjust options as desired and click
+   **Run Diarization**. Results can be saved as text and JSON files.
+
+For more detailed setup instructions, including offline model usage, see the
+[Setup](#setup) section.
 
 ## System Overview
 
