@@ -11,10 +11,9 @@ echo This script will attempt to:
 echo   1. Check for Python.
 echo   2. Create a Python virtual environment (optional).
 echo   3. Activate the virtual environment for this script session.
-echo   4. Install required Python packages from requirements.txt (excluding WhisperX).
+echo   4. Install required Python packages from requirements.txt (includes WhisperX).
 echo   5. Check for FFmpeg.
 echo   6. Guide you on Hugging Face CLI login.
-echo   7. Guide you on the manual installation of WhisperX.
 echo.
 echo Please ensure you have an active internet connection for downloading packages.
 echo.
@@ -154,18 +153,6 @@ if exist requirements.txt (
 )
 echo.
 
-echo ################################################################################
-echo # IMPORTANT: Manual Installation of WhisperX Required                        #
-echo ################################################################################
-echo.
-echo This script does NOT install WhisperX automatically.
-echo WhisperX is required for transcription and must be installed manually.
-echo Please refer to the 'Project Setup (Manual)' section in README.md
-echo for instructions on cloning the WhisperX repository and installing it
-echo using 'pip install .' from within its directory.
-echo.
-pause
-cls
 
 REM --- Section 6: FFmpeg Check ---
 echo ################################################################################
@@ -223,6 +210,37 @@ echo.
 pause
 cls
 
+REM --- Section 7: Download Models for Offline Use (Optional) ---
+echo ###########################################################################
+echo # Step 7: Download default models for offline use (optional)
+echo ###########################################################################
+echo.
+set /p dl_models="Do you want to download the default pyannote and WhisperX models (~7+ GB)? (Y/N): "
+if /I not "%dl_models%"=="N" (
+    set MODEL_DIR=models
+    if not exist %MODEL_DIR% mkdir %MODEL_DIR%
+    git lfs install
+    echo Cloning pyannote/speaker-diarization-3.1...
+    git clone https://huggingface.co/pyannote/speaker-diarization-3.1 %MODEL_DIR%\speaker-diarization-3.1
+    pushd %MODEL_DIR%\speaker-diarization-3.1
+    git lfs pull
+    popd
+    echo Cloning pyannote/segmentation-3.0...
+    git clone https://huggingface.co/pyannote/segmentation-3.0 %MODEL_DIR%\segmentation-3.0
+    pushd %MODEL_DIR%\segmentation-3.0
+    git lfs pull
+    popd
+    echo Cloning WhisperX model (faster-whisper-large-v3)...
+    git clone https://huggingface.co/guillaumekln/faster-whisper-large-v3 %MODEL_DIR%\faster-whisper-large-v3
+    pushd %MODEL_DIR%\faster-whisper-large-v3
+    git lfs pull
+    popd
+) else (
+    echo Skipping model download.
+)
+pause
+cls
+
 REM --- Section 8: Completion Message ---
 echo ################################################################################
 echo # Setup Script Completed!                                                      #
@@ -232,8 +250,6 @@ echo This script has finished its automated tasks.
 echo.
 echo REMEMBER:
 echo   - Complete the Hugging Face login and accept model licenses if you haven't.
-echo   - Manually install WhisperX as per README.md instructions.
-echo   - To run the Python application (`diarize_huggingface_cli.py`),
 echo     you need to activate the virtual environment in your terminal session first:
 echo.
 echo       venv\Scripts\activate.bat
