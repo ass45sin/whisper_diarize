@@ -587,21 +587,10 @@ pip3 --version     # or pip --version
     Your terminal prompt should change to indicate that the virtual environment is active (e.g., `(venv) your-prompt$`).
 
 3.  **Install dependencies:**
-    a. Install base dependencies:
-       ```bash
-       pip install -r requirements.txt
-       ```
-       *(Note: WhisperX has been removed from requirements.txt to facilitate offline setup of other packages. It must be installed manually as described below.)*
-
-    b. **Install WhisperX manually:**
-       WhisperX is required for transcription. Clone its repository and install it locally:
-       ```bash
-       git clone https://github.com/m-bain/whisperx.git
-       cd whisperx
-       pip install .
-       cd ..
-       ```
-       Ensure you do this in your activated virtual environment.
+    ```bash
+    pip install -r requirements.txt
+    ```
+    *(WhisperX is now included in `requirements.txt` and will be installed automatically.)*
 
 4.  **Install FFmpeg:** This is an essential external dependency for audio processing.
     *   **macOS (using Homebrew):**
@@ -713,8 +702,7 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Check for an existing Python installation.
     *   Offer to create a Python virtual environment (in a folder named `venv`).
     *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt`.
-    *   **Note on WhisperX**: WhisperX is NO LONGER installed by this script due to its removal from `requirements.txt`. You MUST install WhisperX manually as described in the "Project Setup (Manual)" section after running this automated script if you need transcription capabilities.
+    *   Install Python dependencies from `requirements.txt` (includes WhisperX).
     *   Check if FFmpeg is accessible in your system's PATH and provide guidance if not.
     *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
 
@@ -733,8 +721,7 @@ For convenience, platform-specific installation scripts are provided to automate
     *   Check for Python 3 and pip3.
     *   Offer to create a Python virtual environment (in a folder named `venv`).
     *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt`.
-    *   **Note on WhisperX**: WhisperX is NO LONGER installed by this script due to its removal from `requirements.txt`. You MUST install WhisperX manually as described in the "Project Setup (Manual)" section after running this automated script if you need transcription capabilities.
+    *   Install Python dependencies from `requirements.txt` (includes WhisperX).
     *   Check if FFmpeg is accessible and provide OS-specific installation advice if not (Homebrew for macOS, apt for Debian/Ubuntu, etc.).
     *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
 
@@ -774,7 +761,7 @@ Refer to the "Help & Documentation" section within the Gradio UI or the sections
     *   `torchaudio`: Audio library for PyTorch.
     *   `pandas`: For data manipulation.
     *   `huggingface_hub`: Provides `huggingface-cli` for authentication and model downloads, and is used by `pyannote.audio`.
-    *   WhisperX: For speech transcription. Must be installed manually from its GitHub repository (see Setup section).
+    *   `whisperx`: For speech transcription (installed automatically from `requirements.txt`).
 
 ### Hardware Recommendations
 
@@ -847,7 +834,7 @@ This section provides solutions to common problems you might encounter.
 
 *   **Error**: `"❌ Failed to load transcription model (WhisperX)."`
     *   **Solution**:
-        *   Ensure WhisperX was installed correctly by following the manual installation steps (cloning the repository and running `pip install .` from within its directory). Check for any errors during that installation.
+        *   Ensure WhisperX installed correctly via `pip install -r requirements.txt`. Check for any errors during installation.
         *   Check you have enough RAM/VRAM for the selected model size (see "Model Sizes" in the UI's Transcription help tab). Try a smaller model (e.g., "base" or "small").
         *   Ensure all dependencies for WhisperX (like `faster-whisper`) were installed correctly. This should be handled by `pip install .` if the WhisperX `setup.py` is correctly configured.
 
