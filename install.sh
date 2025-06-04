@@ -10,10 +10,9 @@ echo "This script will attempt to:"
 echo "  1. Check for Python 3 and pip3."
 echo "  2. Create a Python virtual environment (recommended)."
 echo "  3. Activate the virtual environment for this script's operations."
-echo "  4. Install required Python packages from requirements.txt (excluding WhisperX)."
+echo "  4. Install required Python packages from requirements.txt (includes WhisperX)."
 echo "  5. Check for FFmpeg."
 echo "  6. Guide you on Hugging Face CLI login and license acceptance."
-echo "  7. Guide you on the manual installation of WhisperX."
 echo ""
 echo "Please ensure you have an active internet connection for downloading packages."
 echo "You might be prompted for your password (sudo) for some installations (e.g., FFmpeg on Linux)."
@@ -178,19 +177,6 @@ else
 fi
 echo ""
 
-echo ""
-echo "################################################################################"
-color_yellow "# IMPORTANT: Manual Installation of WhisperX Required                        #"
-echo "################################################################################"
-echo ""
-color_yellow "This script does NOT install WhisperX automatically."
-echo "WhisperX is required for transcription and must be installed manually."
-echo "Please refer to the 'Project Setup (Manual)' section in README.md"
-echo "for instructions on cloning the WhisperX repository and installing it"
-echo "using 'pip install .' from within its directory."
-echo ""
-read -p "Press Enter to continue..."
-clear
 
 # --- Section 6: FFmpeg Check ---
 echo "################################################################################"
@@ -256,8 +242,45 @@ echo "   for the required models on the Hugging Face website:"
 echo "     - https://huggingface.co/pyannote/speaker-diarization-3.1 (Click 'Access repository')"
 echo "     - https://huggingface.co/pyannote/segmentation-3.0 (Click 'Access repository')"
 echo ""
-echo "These steps are crucial for the application to download and use the models."
-echo ""
+echo "These steps are crucial for the application to download and use the models." 
+echo "" 
+read -p "Press Enter to continue..." 
+clear 
+
+# --- Section 7: Download Models for Offline Use (Optional) ---
+echo "##########################################################################" 
+echo "# Step 7: Download default models for offline use (optional)" 
+echo "##########################################################################" 
+echo "" 
+read -p "Do you want to download the default pyannote and WhisperX models (~7+ GB)? (Y/n): " download_models
+if [[ ! "$download_models" =~ ^[Nn]$ ]]; then
+    # Verify Hugging Face CLI login before attempting to clone
+    if ! huggingface-cli whoami &> /dev/null; then
+        color_red "ERROR: You are not logged in to Hugging Face CLI."
+        echo "Please run 'huggingface-cli login' in a separate terminal and ensure"
+        echo "you have accepted the model licenses before running this step again."
+        read -p "Press Enter to exit..."
+        exit 1
+    fi
+
+    MODEL_DIR="models"
+    mkdir -p "$MODEL_DIR"
+    git lfs install
+    echo "Cloning pyannote/speaker-diarization-3.1..."
+    git clone https://huggingface.co/pyannote/speaker-diarization-3.1 "$MODEL_DIR/speaker-diarization-3.1"
+    (cd "$MODEL_DIR/speaker-diarization-3.1" && git lfs pull)
+    echo "Cloning pyannote/segmentation-3.0..."
+    git clone https://huggingface.co/pyannote/segmentation-3.0 "$MODEL_DIR/segmentation-3.0"
+    (cd "$MODEL_DIR/segmentation-3.0" && git lfs pull)
+    read -p "Enter the Hugging Face repo for the WhisperX model [guillaumekln/faster-whisper-large-v3]: " WHISPER_REPO
+    WHISPER_REPO=${WHISPER_REPO:-guillaumekln/faster-whisper-large-v3}
+    WHISPER_DIR=$(basename "$WHISPER_REPO")
+    echo "Cloning WhisperX model ($WHISPER_REPO)..."
+    git clone "https://huggingface.co/$WHISPER_REPO" "$MODEL_DIR/$WHISPER_DIR"
+    (cd "$MODEL_DIR/$WHISPER_DIR" && git lfs pull)
+else
+    echo "Skipping model download."
+fi
 read -p "Press Enter to continue..."
 clear
 
@@ -283,7 +306,6 @@ echo ""
 echo "REMEMBER THE FOLLOWING MANUAL STEPS if you haven't done them yet:"
 echo "  - Complete the Hugging Face login ('huggingface-cli login')."
 echo "  - Accept the model licenses on the Hugging Face website."
-echo "  - Manually install WhisperX as per README.md instructions."
 echo ""
 if [ -n "$VENV_DIR" ]; then
     echo "To run the Python application ('diarize_huggingface_cli.py'),"

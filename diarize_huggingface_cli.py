@@ -24,9 +24,8 @@ import json
 from pathlib import Path
 import pandas as pd
 
-# Check for whisper/whisperx availability
+# Check for WhisperX availability (required for transcription)
 WHISPERX_AVAILABLE = False
-WHISPER_AVAILABLE = False
 WHISPERX_VERSION = None
 
 try:
@@ -34,18 +33,14 @@ try:
     import importlib.metadata
     try:
         WHISPERX_VERSION = importlib.metadata.version("whisperx")
-        print(f"✅ WhisperX is available (recommended), version: {WHISPERX_VERSION}")
+        print(f"✅ WhisperX is available, version: {WHISPERX_VERSION}")
     except importlib.metadata.PackageNotFoundError:
         WHISPERX_VERSION = "unknown"
-        print("✅ WhisperX is available (recommended), version: unknown")
+        print("✅ WhisperX is available, version: unknown")
     WHISPERX_AVAILABLE = True
 except ImportError:
-    try:
-        import whisper
-        WHISPER_AVAILABLE = True
-        print("✅ Standard Whisper is available")
-    except ImportError:
-        print("⚠️ Neither WhisperX nor Whisper is available")
+    print("❌ WhisperX is required for transcription. Please install it via 'pip install whisperx'.")
+    sys.exit(1)
 
 # Configuration
 DEFAULT_TEMP_DIR = os.path.join(tempfile.gettempdir(), "diarize_temp")
@@ -312,29 +307,6 @@ def _try_load_whisperx(model_name_or_path, local_path_provided=False):
             print(f"❌ Error loading WhisperX model {model_name_or_path}: {str(e)}")
         return None
 
-def _try_load_standard_whisper(model_name_or_path, local_path_provided=False, is_fallback=False):
-    progress_msg = "Loading Whisper model as fallback" if is_fallback else "Loading Whisper model"
-    try:
-        update_progress(progress_msg, 0.32)
-        if local_path_provided:
-            print(f"🔄 Loading Whisper model from local path: {model_name_or_path}...")
-            # whisper.load_model expects the path directly if it's a local file.
-            model = whisper.load_model(model_name_or_path)
-            print(f"✅ Whisper model loaded successfully from local path: {model_name_or_path}!")
-        else:
-            print(f"🔄 Loading Whisper {model_name_or_path} model from Hugging Face/cache...")
-            model = whisper.load_model(model_name_or_path)
-            print(f"✅ Whisper model loaded successfully ({model_name_or_path})!")
-
-        update_progress("Whisper model loaded", 0.35)
-        return model
-    except Exception as e:
-        error_prefix = f"❌ Error loading fallback Whisper model" if is_fallback else f"❌ Error loading Whisper model"
-        if local_path_provided:
-            print(f"{error_prefix} from local path {model_name_or_path}: {str(e)}")
-        else:
-            print(f"{error_prefix} {model_name_or_path}: {str(e)}")
-        return None
 
 def load_whisper_model(model_size="base", local_whisper_path=None):
     """Load Whisper/WhisperX model for transcription, from local path or by name."""
@@ -342,36 +314,15 @@ def load_whisper_model(model_size="base", local_whisper_path=None):
     model_identifier = local_whisper_path if local_whisper_path else model_size
     is_local = bool(local_whisper_path)
 
-    if WHISPERX_AVAILABLE:
-        if is_local:
-            print(f"Attempting to load WhisperX from local path: {model_identifier}")
-        else:
-            print(f"Attempting to load WhisperX model: {model_identifier}")
-        model = _try_load_whisperx(model_identifier, local_path_provided=is_local)
-        if model:
-            return model
+    if is_local:
+        print(f"Attempting to load WhisperX from local path: {model_identifier}")
+    else:
+        print(f"Attempting to load WhisperX model: {model_identifier}")
+    model = _try_load_whisperx(model_identifier, local_path_provided=is_local)
+    if model:
+        return model
 
-        # Fallback if WhisperX failed (either local or remote attempt)
-        warning_msg = f"⚠️ WhisperX failed to load from {'local path ' + model_identifier if is_local else model_identifier}."
-        print(warning_msg)
-        if WHISPER_AVAILABLE:
-            print("⚠️ Falling back to standard Whisper.")
-            # If local WhisperX path failed, we don't have a local standard Whisper path unless it's the same.
-            # For now, fallback to standard Whisper using model_size name, not the local_whisper_path.
-            # This could be refined if a user wants to provide separate local paths for X and standard.
-            return _try_load_standard_whisper(model_size, local_path_provided=False, is_fallback=True)
-        else:
-            print("⚠️ Standard Whisper is not available for fallback.")
-            return None # WhisperX failed, and standard Whisper not available for fallback
-
-    elif WHISPER_AVAILABLE:
-        if is_local:
-            print(f"Attempting to load standard Whisper from local path: {model_identifier}")
-        else:
-            print(f"Attempting to load standard Whisper model: {model_identifier}")
-        return _try_load_standard_whisper(model_identifier, local_path_provided=is_local)
-    
-    print("⚠️ Neither WhisperX nor standard Whisper is available.")
+    print(f"❌ Failed to load WhisperX model from {model_identifier}")
     return None
 
 def _transcribe_with_whisperx(whisper_model, audio_path, options, language, diarization, device):
@@ -454,14 +405,8 @@ def transcribe_audio(whisper_model, audio_path, language=None, diarization=None)
             language = language.strip().lower()
             options["language"] = language
             
-        if WHISPERX_AVAILABLE:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            result = _transcribe_with_whisperx(whisper_model, audio_path, options, language, diarization, device)
-        else:
-            # Fallback to standard Whisper
-            print("🔊 Using standard Whisper for transcription")
-            result = whisper_model.transcribe(audio_path, **options)
-            print("✅ Whisper transcription complete")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        result = _transcribe_with_whisperx(whisper_model, audio_path, options, language, diarization, device)
         
         update_progress("Transcription complete", 0.50)
         return result
@@ -686,12 +631,8 @@ def _build_final_transcript_string(diarization_obj,
                     output_lines.append(f"TIMING_ERROR {speaker_label}: {text_content}")
                 else:
                     output_lines.append(f"TIMING_ERROR: {text_content}")
-    elif combined_std_whisper_lines: 
-        # Standard Whisper: combined_std_whisper_lines are already pyannote-turn-aligned.
-        output_lines.extend(combined_std_whisper_lines)
-    else: 
-        # No transcription, or WhisperX result was not usable in the expected way.
-        # Fallback to listing pyannote turns without text.
+    else:
+        # No transcription or WhisperX result was not usable in the expected way.
         if diarization_obj:
             for turn, _, speaker_label_from_pyannote in diarization_obj.itertracks(yield_label=True):
                 start_str = str(timedelta(seconds=round(turn.start)))
@@ -779,8 +720,8 @@ def _diarize_transcription_step(
     Handles the transcription part of the diarization process.
     Returns: (raw_whisper_result, combined_std_whisper_lines, error_message_str_or_None)
     """
-    if not transcribe_flag or not (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
-        return None, None, None # No transcription requested or no Whisper available
+    if not transcribe_flag or not WHISPERX_AVAILABLE:
+        return None, None, None  # No transcription requested or WhisperX missing
 
     # Placeholder for local_whisper_path, to be added to load_whisper_model call
     local_whisper_path_param = None # This will be passed from `diarize` eventually
@@ -793,15 +734,10 @@ def _diarize_transcription_step(
             except OSError as e: logging.warning(f"Could not remove temp WAV {wav_file_path} during transcription model load failure: {e}")
         return None, None, "❌ Failed to load transcription model. See console for details."
     
-    diar_for_transcribe = diarization_obj if WHISPERX_AVAILABLE else None
+    diar_for_transcribe = diarization_obj
     raw_whisper_result = transcribe_audio(whisper_model, wav_file_path, language_code, diar_for_transcribe)
-    
+
     combined_std_whisper_lines = None
-    if raw_whisper_result and not WHISPERX_AVAILABLE: # Standard Whisper path needs manual combination
-        combined_std_whisper_lines = combine_diarization_with_transcript(diarization_obj, raw_whisper_result)
-        if combined_std_whisper_lines is None:
-            logging.warning("Failed to combine standard Whisper transcript with diarization for single file processing.")
-            # Not returning an error message here, as some transcript (raw_whisper_result) might still be usable.
 
     return raw_whisper_result, combined_std_whisper_lines, None # Success
 
@@ -850,19 +786,16 @@ def diarize(audio_file, output_path, known_speakers,
     # Transcription
     raw_whisper_result = None
     combined_std_whisper_lines = None
-    if transcribe and (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
+    if transcribe and WHISPERX_AVAILABLE:
         # Pass local_whisper_path to load_whisper_model
         whisper_model = load_whisper_model(model_size=whisper_model_size, local_whisper_path=local_whisper_path)
         if whisper_model is None:
             if wav_file and wav_file != audio_file: os.remove(wav_file)
             return "❌ Failed to load transcription model. See console for details.", None
         
-        diar_for_transcribe = diarization if WHISPERX_AVAILABLE else None
+        diar_for_transcribe = diarization
         # transcribe_audio will use the loaded whisper_model, which now respects local_whisper_path
         raw_whisper_result = transcribe_audio(whisper_model, wav_file, language, diar_for_transcribe)
-        
-        if raw_whisper_result and not WHISPERX_AVAILABLE:
-            combined_std_whisper_lines = combine_diarization_with_transcript(diarization, raw_whisper_result)
 
     # Cleanup temporary wav file
     if wav_file and wav_file != audio_file:
@@ -940,7 +873,7 @@ def batch_diarize(input_folder, output_path, known_speakers,
         return "❌ Failed to load diarization model", None
     
     whisper_model = None
-    if transcribe and (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
+    if transcribe and WHISPERX_AVAILABLE:
         whisper_model = load_whisper_model(model_size=whisper_model_size, local_whisper_path=local_whisper_path)
         if whisper_model is None and transcribe: # transcribe flag is still relevant here
             return "❌ Failed to load transcription model", None
@@ -974,11 +907,8 @@ def batch_diarize(input_folder, output_path, known_speakers,
             
             # Transcribe if requested
             transcript_result = None
-            combined_output = None
             if transcribe and whisper_model is not None:
-                transcript_result = transcribe_audio(whisper_model, wav_file, language, diarization if WHISPERX_AVAILABLE else None)
-                if transcript_result and not WHISPERX_AVAILABLE:
-                    combined_output = combine_diarization_with_transcript(diarization, transcript_result)
+                transcript_result = transcribe_audio(whisper_model, wav_file, language, diarization)
             
             # Clean up temp file
             if wav_file and wav_file != audio_file:
@@ -1017,9 +947,6 @@ def batch_diarize(input_folder, output_path, known_speakers,
                             whisperx_output.append(f"{start_str} - {end_str}: {text}")
                     
                     transcript = "\n".join(header) + "\n\n" + "\n".join(whisperx_output)
-                elif combined_output:
-                    # Use manually combined output for standard Whisper
-                    transcript = "\n".join(header) + "\n\n" + "\n".join(combined_output)
                 else:
                     # Fallback to basic diarization
                     transcript = "\n".join(header) + "\n\n" + "\n".join(output_lines)
@@ -1079,9 +1006,9 @@ def create_interface():
                             known_speakers = gr.Number(label="Number of speakers", precision=0, info="Leave blank for auto detection")
                         include_speaker_labels = gr.Checkbox(label="Include speaker labels", value=True, info="Show speaker IDs in output")
                         transcribe = gr.Checkbox(
-                            label="Transcribe speech", 
-                            value=(WHISPERX_AVAILABLE or WHISPER_AVAILABLE), 
-                            info="Generate text transcription using WhisperX (preferred) or standard Whisper"
+                            label="Transcribe speech",
+                            value=WHISPERX_AVAILABLE,
+                            info="Generate text transcription using WhisperX"
                         )
                         export_json = gr.Checkbox(label="Export results as JSON", value=False, info="Save structured data for further processing")
                     
@@ -1132,9 +1059,9 @@ def create_interface():
                 
                 batch_include_speaker_labels = gr.Checkbox(label="Include speaker labels", value=True, info="Show speaker IDs in output")
                 batch_transcribe = gr.Checkbox(
-                    label="Transcribe speech", 
-                    value=(WHISPERX_AVAILABLE or WHISPER_AVAILABLE), 
-                    info="Generate text transcription using WhisperX (preferred) or standard Whisper"
+                    label="Transcribe speech",
+                    value=WHISPERX_AVAILABLE,
+                    info="Generate text transcription using WhisperX"
                 )
                 batch_export_json = gr.Checkbox(label="Export results as JSON", value=False, info="Save structured data for further processing")
                 
@@ -1278,11 +1205,11 @@ def create_interface():
             outputs=[progress_info]
         )
 
-        # Enable/disable transcription based on Whisper/WhisperX availability
+        # Enable/disable transcription based on WhisperX availability
         def update_transcription_availability(value):
-            if value and not (WHISPERX_AVAILABLE or WHISPER_AVAILABLE):
-                return gr.Checkbox(value=False, interactive=False, 
-                                  info="Install WhisperX or Whisper to enable transcription: pip install git+https://github.com/m-bain/whisperx.git")
+            if value and not WHISPERX_AVAILABLE:
+                return gr.Checkbox(value=False, interactive=False,
+                                  info="WhisperX is required for transcription")
             return gr.Checkbox(interactive=True)
             
         transcribe.change(
@@ -1364,28 +1291,12 @@ def create_interface():
                 
                 with gr.TabItem("Transcription"):
                     gr.Markdown(f"""
-                    ### 🎯 Speech Transcription 
-                    
-                    **Current Status**: 
-                    - WhisperX: {"Available ✅" if WHISPERX_AVAILABLE else "Not Available ❌"} (Recommended)
-                    - Whisper: {"Available ✅" if WHISPER_AVAILABLE else "Not Available ❌"} (Fallback)
-                    
-                    #### Installation
-                    If transcription is not available, install WhisperX (recommended). It needs to be installed manually:
-                    ```bash
-                    # Clone the WhisperX repository
-                    git clone https://github.com/m-bain/whisperx.git
-                    cd whisperx
-                    # Install WhisperX from the local clone
-                    pip install .
-                    cd ..
-                    ```
-                    Ensure this is done within your activated virtual environment.
-                    
-                    Or standard Whisper (if WhisperX fails or for comparison, though WhisperX is preferred):
-                    ```bash
-                    pip install openai-whisper
-                    ```
+                    ### 🎯 Speech Transcription
+
+                    **Current Status**:
+                    - WhisperX: {"Available ✅" if WHISPERX_AVAILABLE else "Not Available ❌"}
+
+                    WhisperX is installed automatically from `requirements.txt` and provides word-level timestamps aligned with diarization results.
                     
                     #### WhisperX Advantages
                     - Better integration with speaker diarization
@@ -1518,14 +1429,9 @@ if __name__ == "__main__":
     
     # Check transcription availability
     if WHISPERX_AVAILABLE:
-        print("✅ WhisperX is installed (recommended for better transcription)")
-    elif WHISPER_AVAILABLE:
-        print("✅ Standard Whisper is installed")
-        print("⚠️ For better results, consider installing WhisperX: pip install git+https://github.com/m-bain/whisperx.git")
+        print("✅ WhisperX is installed")
     else:
-        print("⚠️ No transcription system is installed. To enable speech transcription, run:")
-        print("   pip install git+https://github.com/m-bain/whisperx.git  # Recommended")
-        print("   or: pip install openai-whisper  # Basic")
+        print("❌ WhisperX is not installed. Please run 'pip install whisperx' to enable transcription.")
     
     # Print version info
     print(f"🐍 Python version: {sys.version.split()[0]}")

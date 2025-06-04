@@ -1,9 +1,9 @@
 gradio
-pyannote.audio
+pyannote.audio>=3.3.2
 torch
 torchaudio
 pandas
 # For Hugging Face model access (CLI tool, used by pyannote.audio and for login):
 huggingface_hub # Provides huggingface-cli and used by pyannote.audio
 # For Transcription:
-# whisperx is now installed manually, see README.md
+whisperx
