@@ -724,7 +724,7 @@ graph TD
 
 ## 🚀 Automated Installation (Experimental)
 
-For convenience, platform-specific installation scripts are provided to automate some of the setup steps. These scripts are experimental and aim to simplify the process. It's recommended to understand the manual steps they perform.
+For convenience, platform-specific installation scripts are provided to automate some of the setup steps. These scripts are experimental and aim to simplify the process. It's recommended to understand the manual steps they perform, at the current moment it is incredibly wonky, use it at your own risk :D.
 
 ### Windows (`install.bat`)
 
