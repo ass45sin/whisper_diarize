@@ -722,68 +722,6 @@ graph TD
     C_Action --> C;
 ```
 
-## 🚀 Automated Installation (Experimental)
-
-For convenience, platform-specific installation scripts are provided to automate some of the setup steps. These scripts are experimental and aim to simplify the process. It's recommended to understand the manual steps they perform, at the current moment it is incredibly wonky, use it at your own risk :D.
-
-### Windows (`install.bat`)
-
-1.  **Download `install.bat`** to the root directory of the cloned project.
-2.  **Run the script:** You can either double-click `install.bat` or run it from a Command Prompt:
-    ```cmd
-    install.bat
-    ```
-3.  **Follow the prompts:** The script will:
-    *   Check for an existing Python installation.
-    *   Offer to create a Python virtual environment (in a folder named `venv`).
-    *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt` (includes WhisperX).
-    *   Check if FFmpeg is accessible in your system's PATH and provide guidance if not.
-    *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
-
-### macOS and Linux (`install.sh`)
-
-1.  **Download `install.sh`** to the root directory of the cloned project.
-2.  **Make the script executable:** Open your terminal and navigate to the project directory, then run:
-    ```bash
-    chmod +x install.sh
-    ```
-3.  **Run the script:**
-    ```bash
-    ./install.sh
-    ```
-4.  **Follow the prompts:** The script will:
-    *   Check for Python 3 and pip3.
-    *   Offer to create a Python virtual environment (in a folder named `venv`).
-    *   Attempt to activate the virtual environment for the script's duration.
-    *   Install Python dependencies from `requirements.txt` (includes WhisperX).
-    *   Check if FFmpeg is accessible and provide OS-specific installation advice if not (Homebrew for macOS, apt for Debian/Ubuntu, etc.).
-    *   Guide you on the manual steps for Hugging Face CLI login and model license acceptance.
-
-### Important Notes for Automated Installation
-
-*   **Review Scripts:** These scripts automate the manual setup steps. You can review the content of `install.bat` or `install.sh` in a text editor to understand the commands they execute.
-*   **FFmpeg Installation:** While the scripts check for FFmpeg and provide common installation commands, you might need to perform additional manual steps depending on your specific OS distribution or if you choose a manual FFmpeg installation. Ensuring FFmpeg is correctly added to your system's PATH is crucial.
-*   **Hugging Face Authentication:** The scripts will guide you, but the `huggingface-cli login` process and accepting model licenses on the Hugging Face website are interactive steps you must complete carefully using your Hugging Face account.
-*   **Login Verification:** The installer now checks that you are logged in to Hugging Face before downloading models. If not logged in, it instructs you to run `huggingface-cli login` and exits.
-*   **Virtual Environment Activation:** After the installation script completes, you **must manually activate the virtual environment** in your terminal session before running the main Python application.
-    *   Windows (Command Prompt): `venv\Scripts\activate.bat`
-    *   Windows (PowerShell): `.\venv\Scripts\Activate.ps1`
-    *   macOS/Linux: `source venv/bin/activate`
-*   **Offline Setup Option:** The installation scripts can now download the default `pyannote` and `WhisperX` models for you. This requires that you log in to Hugging Face and have accepted the model licenses. When completed, you'll have all dependencies locally for offline use.
-
-## Usage
-
-Run the script from your terminal (ensure your virtual environment is activated):
-
-```bash
-python diarize_huggingface_cli.py
-```
-
-This will launch a Gradio web interface in your browser.
-
-Refer to the "Help & Documentation" section within the Gradio UI or the sections below for more detailed instructions on using the interface, supported formats, and troubleshooting.
-
 ## 📦 System Requirements
 
 ### Essential Software & Libraries
